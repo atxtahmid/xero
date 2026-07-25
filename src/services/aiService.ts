@@ -9,31 +9,37 @@ class AIService {
     guildId: string,
     prompt: string,
   ) {
-    const context = await aiContextService.buildPrompt(
-      userId,
-      guildId,
-      prompt,
-    );
+    try {
+      const context = await aiContextService.buildPrompt(
+        userId,
+        guildId,
+        prompt,
+      );
 
-    const fullPrompt = promptBuilder.build(context);
+      const fullPrompt = promptBuilder.build(context);
 
-    const response = await geminiService.generate(fullPrompt);
+      const response = await geminiService.generate(fullPrompt);
 
-    await chatHistoryService.add(
-      userId,
-      guildId,
-      "user",
-      prompt,
-    );
+      await chatHistoryService.add(
+        userId,
+        guildId,
+        "user",
+        prompt,
+      );
 
-    await chatHistoryService.add(
-      userId,
-      guildId,
-      "assistant",
-      response,
-    );
+      await chatHistoryService.add(
+        userId,
+        guildId,
+        "assistant",
+        response,
+      );
 
-    return response;
+      return response;
+    } catch (error) {
+      console.error(error);
+
+      return "⚠️ Sorry, I'm currently unable to process your request. Please try again in a moment.";
+    }
   }
 }
 
