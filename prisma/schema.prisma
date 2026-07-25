@@ -7,15 +7,122 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum PunishmentType {
+  REMOVE_ROLES
+  TIMEOUT
+  KICK
+  BAN
+}
+
 model User {
-  id        String   @id
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String        @id
+  username     String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  chatHistory  ChatHistory[]
+  warnings     Warning[]
 }
 
 model Guild {
-  id        String   @id
-  prefix    String   @default("!")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String               @id
+  prefix             String               @default("!")
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  settings           GuildSettings?
+  chatHistory        ChatHistory[]
+  warnings           Warning[]
+  antiNukeSettings   AntiNukeSettings?
+}
+
+model GuildSettings {
+  id                 String   @id @default(cuid())
+
+  guildId            String   @unique
+  guild              Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  language           String   @default("en")
+  aiEnabled          Boolean  @default(true)
+  aiModel            String   @default("gemini-2.5-flash")
+
+  logChannelId       String?
+  welcomeChannelId   String?
+  welcomeMessage     String?
+  leaveMessage       String?
+
+  autoRoleId         String?
+  modRoleId          String?
+  adminRoleId        String?
+
+  searchEnabled      Boolean  @default(true)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model ChatHistory {
+  id          String   @id @default(cuid())
+
+  userId      String
+  guildId     String
+
+  role        String
+  content     String   @db.Text
+
+  createdAt   DateTime @default(now())
+
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guild        Guild   @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([guildId])
+}
+
+model Warning {
+  id            String   @id @default(cuid())
+
+  guildId       String
+  userId        String
+
+  moderatorId   String
+  reason        String   @db.Text
+
+  createdAt     DateTime @default(now())
+
+  guild         Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([guildId])
+  @@index([userId])
+}
+
+model AntiNukeSettings {
+  id                    String           @id @default(cuid())
+
+  guildId               String           @unique
+  guild                 Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  enabled               Boolean          @default(true)
+
+  antiMassBan           Boolean          @default(true)
+  antiMassKick          Boolean          @default(true)
+
+  antiChannelDelete     Boolean          @default(true)
+  antiChannelCreate     Boolean          @default(true)
+  antiChannelUpdate     Boolean          @default(true)
+
+  antiRoleDelete        Boolean          @default(true)
+  antiRoleCreate        Boolean          @default(true)
+  antiRoleUpdate        Boolean          @default(true)
+
+  antiBotAdd            Boolean          @default(true)
+  antiWebhookCreate     Boolean          @default(true)
+  antiServerUpdate      Boolean          @default(true)
+
+  threshold             Int              @default(3)
+  punishment            PunishmentType   @default(REMOVE_ROLES)
+
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 }
