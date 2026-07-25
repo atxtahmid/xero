@@ -1,0 +1,36 @@
+{
+  "name": "xero",
+  "version": "1.0.0",
+  "description": "Modern All-In-One Discord Bot. Made by @.xr1c For XERO-IQ OFFICIAL DISCORD SERVER",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "deploy": "tsx src/deploy-commands.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "discord.js": "^14.21.0",
+    "@discordjs/rest": "^2.4.3",
+    "discord-api-types": "^0.37.119",
+    "dotenv": "^16.6.1",
+    "@prisma/client": "^6.14.0",
+    "@google/genai": "^1.14.0",
+    "winston": "^3.17.0",
+    "axios": "^1.11.0",
+    "zod": "^4.0.17"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "tsx": "^4.20.5",
+    "prisma": "^6.14.0",
+    "@types/node": "^24.3.0",
+    "eslint": "^9.34.0",
+    "prettier": "^3.6.2"
+  }
+}
