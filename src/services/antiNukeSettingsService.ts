@@ -33,17 +33,18 @@ class AntiNukeSettingsService {
 
   async setThreshold(
     guildId: string,
-    threshold: number,
+    field: string,
+    value: number,
   ) {
     return db.antiNukeSettings.upsert({
       where: { guildId },
       update: {
-        threshold,
+        [field]: value,
       },
       create: {
         guildId,
         enabled: true,
-        threshold,
+        [field]: value,
       },
     });
   }

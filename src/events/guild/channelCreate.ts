@@ -1,18 +1,20 @@
 import {
-  AuditLogEvent,
   Events,
-  GuildBasedChannel,
+  GuildChannel,
 } from "discord.js";
 
 import antiNukeHelper from "../../utils/antiNukeHelper.js";
+import { AntiNukeAction } from "../../utils/antiNukeActions.js";
 
 export default {
   name: Events.ChannelCreate,
 
-  async execute(channel: GuildBasedChannel) {
+  async execute(
+    channel: GuildChannel,
+  ): Promise<void> {
     await antiNukeHelper.handle(
       channel.guild,
-      AuditLogEvent.ChannelCreate,
+      AntiNukeAction.CHANNEL_CREATE,
     );
   },
 };

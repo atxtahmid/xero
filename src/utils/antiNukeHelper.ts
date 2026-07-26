@@ -1,19 +1,61 @@
-import {
-  AuditLogEvent,
-  Guild,
-} from "discord.js";
+import { Guild } from "discord.js";
 
 import db from "../services/database.js";
 import auditLogService from "../services/auditLogService.js";
 import antiNukeWhitelistService from "../services/antiNukeWhitelistService.js";
-import globalOwnerService from "../services/globalOwnerService.js";
+import punishmentService from "../services/punishmentService.js";
+import globalOwnerService from "./globalOwner.js";
 import thresholdTracker from "./thresholdTracker.js";
+import { AntiNukeAction } from "./antiNukeActions.js";
 
 class AntiNukeHelper {
+  private getThreshold(
+    settings: any,
+    action: AntiNukeAction,
+  ): number {
+    switch (action) {
+      case AntiNukeAction.BOT_ADD:
+        return settings.botAddThreshold;
+
+      case AntiNukeAction.MASS_BAN:
+        return settings.massBanThreshold;
+
+      case AntiNukeAction.MASS_KICK:
+        return settings.massKickThreshold;
+
+      case AntiNukeAction.CHANNEL_DELETE:
+        return settings.channelDeleteThreshold;
+
+      case AntiNukeAction.CHANNEL_CREATE:
+        return settings.channelCreateThreshold;
+
+      case AntiNukeAction.CHANNEL_UPDATE:
+        return settings.channelUpdateThreshold;
+
+      case AntiNukeAction.ROLE_DELETE:
+        return settings.roleDeleteThreshold;
+
+      case AntiNukeAction.ROLE_CREATE:
+        return settings.roleCreateThreshold;
+
+      case AntiNukeAction.ROLE_UPDATE:
+        return settings.roleUpdateThreshold;
+
+      case AntiNukeAction.WEBHOOK_CREATE:
+        return settings.webhookCreateThreshold;
+
+      case AntiNukeAction.SERVER_UPDATE:
+        return settings.serverUpdateThreshold;
+
+      default:
+        return 1;
+    }
+  }
+
   async handle(
     guild: Guild,
-    action: AuditLogEvent,
-  ): Promise<void> {
+    action: AntiNukeAction,
+  ): Promise<boolean> {
     const executor =
       await auditLogService.getExecutor(
         guild,
@@ -21,26 +63,23 @@ class AntiNukeHelper {
       );
 
     if (!executor) {
-      return;
+      return false;
     }
 
-    // Ignore the bot itself.
     if (executor.id === guild.client.user.id) {
-      return;
+      return false;
     }
 
-    // Global Owner bypass.
     if (
       globalOwnerService.isGlobalOwner(
         executor.id,
       )
     ) {
-      return;
+      return false;
     }
 
-    // Server Owner bypass.
     if (executor.id === guild.ownerId) {
-      return;
+      return false;
     }
 
     const settings =
@@ -50,14 +89,10 @@ class AntiNukeHelper {
         },
       });
 
-    if (
-      !settings ||
-      !settings.enabled
-    ) {
-      return;
+    if (!settings || !settings.enabled) {
+      return false;
     }
 
-    // Co-Owner bypass.
     const coOwner =
       await db.antiNukeCoOwner.findUnique({
         where: {
@@ -69,35 +104,41 @@ class AntiNukeHelper {
       });
 
     if (coOwner) {
-      return;
+      return false;
     }
 
-    // Whitelist bypass.
     const whitelisted =
       await antiNukeWhitelistService.isWhitelisted(
         guild.id,
         executor.id,
-        action.toString(),
+        action,
       );
 
     if (whitelisted) {
-      return;
+      return false;
     }
+
+    const threshold =
+      this.getThreshold(
+        settings,
+        action,
+      );
 
     const exceeded =
       thresholdTracker.register(
         guild.id,
         executor.id,
-        action.toString(),
-        settings.threshold,
+        action,
+        threshold,
         10_000,
       );
 
     if (!exceeded) {
       console.log(
-        `[ANTI-NUKE] ${executor.tag} (${executor.id}) ${action} (${settings.threshold})`,
+        `[ANTI-NUKE] ${executor.tag} (${executor.id}) ${action}`,
       );
-      return;
+
+      return false;
     }
 
     console.log(
@@ -107,10 +148,16 @@ class AntiNukeHelper {
     thresholdTracker.clear(
       guild.id,
       executor.id,
-      action.toString(),
+      action,
     );
 
-    // Punishment comes next.
+    await punishmentService.execute(
+      guild,
+      executor,
+      settings.punishment,
+    );
+
+    return true;
   }
 }
 

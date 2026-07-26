@@ -4,9 +4,17 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import antiNukeSettingsService from "../../services/antiNukeSettingsService.js";
+import type { Command } from "../../types/Command.js";
 
-export default {
+import antiNukeSettingsService from "../../services/antiNukeSettingsService.js";
+import {
+  PermissionLevel,
+  requirePermission,
+} from "../../utils/permissions.js";
+
+const command: Command = {
+  permissions: [PermissionLevel.ADMIN],
+
   data: new SlashCommandBuilder()
     .setName("antinuke-enable")
     .setDescription("Enable the Anti-Nuke system.")
@@ -16,7 +24,16 @@ export default {
 
   async execute(
     interaction: ChatInputCommandInteraction,
-  ) {
+  ): Promise<void> {
+    if (
+      !(await requirePermission(
+        interaction,
+        PermissionLevel.ADMIN,
+      ))
+    ) {
+      return;
+    }
+
     if (!interaction.guild) {
       await interaction.reply({
         content:
@@ -38,3 +55,5 @@ export default {
     });
   },
 };
+
+export default command;

@@ -1,21 +1,20 @@
 import {
   Events,
-  GuildChannel,
+  Role,
 } from "discord.js";
 
 import antiNukeHelper from "../../utils/antiNukeHelper.js";
 import { AntiNukeAction } from "../../utils/antiNukeActions.js";
 
 export default {
-  name: Events.ChannelUpdate,
+  name: Events.RoleCreate,
 
   async execute(
-    oldChannel: GuildChannel,
-    newChannel: GuildChannel,
+    role: Role,
   ): Promise<void> {
     await antiNukeHelper.handle(
-      newChannel.guild,
-      AntiNukeAction.CHANNEL_UPDATE,
+      role.guild,
+      AntiNukeAction.ROLE_CREATE,
     );
   },
 };
