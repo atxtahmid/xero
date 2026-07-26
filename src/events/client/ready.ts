@@ -2,6 +2,7 @@ import { Client, Events } from "discord.js";
 
 import config from "../../config/index.js";
 import logger from "../../services/logger.js";
+import backupScheduler from "../../services/backupScheduler.js";
 import type { Event } from "../../types/Event.js";
 
 const event: Event<typeof Events.ClientReady> = {
@@ -15,6 +16,12 @@ const event: Event<typeof Events.ClientReady> = {
 
     logger.info(
       `Serving ${client.guilds.cache.size} guild(s).`,
+    );
+
+    backupScheduler.start(client);
+
+    logger.info(
+      "Recovery backup scheduler started.",
     );
 
     logger.info(
