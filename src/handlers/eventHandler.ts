@@ -14,43 +14,83 @@ interface Event {
   execute: (...args: unknown[]) => Promise<void> | void;
 }
 
-export async function loadEvents(client: Client): Promise<void> {
+function getEventFiles(directory: string): string[] {
+  const files: string[] = [];
+
+  const entries = readdirSync(directory, {
+    withFileTypes: true,
+  });
+
+  for (const entry of entries) {
+    const fullPath = join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      files.push(...getEventFiles(fullPath));
+      continue;
+    }
+
+    const extension = extname(entry.name);
+
+    if (
+      extension === ".ts" ||
+      extension === ".js"
+    ) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+export async function loadEvents(
+  client: Client,
+): Promise<void> {
   const eventsPath = join(__dirname, "..", "events");
 
   let loaded = 0;
 
-  const eventFiles = readdirSync(eventsPath).filter((file) => {
-    const extension = extname(file);
-    return extension === ".js" || extension === ".ts";
-  });
+  const eventFiles = getEventFiles(eventsPath);
 
-  for (const file of eventFiles) {
+  for (const filePath of eventFiles) {
     try {
-      const filePath = join(eventsPath, file);
-
-      const module = await import(pathToFileURL(filePath).href);
+      const module = await import(
+        pathToFileURL(filePath).href
+      );
 
       const event: Event | undefined =
         module.default ?? module.event;
 
       if (!event?.name || !event?.execute) {
-        logger.warn(`Skipping invalid event: ${file}`);
+        logger.warn(
+          `Skipping invalid event: ${filePath}`,
+        );
         continue;
       }
 
       if (event.once) {
-        client.once(event.name, (...args) => void event.execute(...args));
+        client.once(event.name, (...args) =>
+          void event.execute(...args),
+        );
       } else {
-        client.on(event.name, (...args) => void event.execute(...args));
+        client.on(event.name, (...args) =>
+          void event.execute(...args),
+        );
       }
 
       loaded++;
 
-      logger.info(`Loaded event: ${event.name}`);
+      logger.info(
+        `Loaded event: ${event.name}`,
+      );
     } catch (error) {
-      logger.error(`Failed to load event: ${file}`, error);
+      logger.error(
+        `Failed to load event: ${filePath}`,
+        error,
+      );
     }
   }
 
-  logger.info(`Successfully loaded ${loaded} event(s).`);
+  logger.info(
+    `Successfully loaded ${loaded} event(s).`,
+  );
 }
