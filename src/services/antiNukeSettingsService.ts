@@ -1,14 +1,12 @@
+import { PunishmentType } from "@prisma/client";
+
 import db from "./database.js";
 
 class AntiNukeSettingsService {
   async enable(guildId: string) {
     return db.antiNukeSettings.upsert({
-      where: {
-        guildId,
-      },
-      update: {
-        enabled: true,
-      },
+      where: { guildId },
+      update: { enabled: true },
       create: {
         guildId,
         enabled: true,
@@ -18,12 +16,8 @@ class AntiNukeSettingsService {
 
   async disable(guildId: string) {
     return db.antiNukeSettings.upsert({
-      where: {
-        guildId,
-      },
-      update: {
-        enabled: false,
-      },
+      where: { guildId },
+      update: { enabled: false },
       create: {
         guildId,
         enabled: false,
@@ -33,9 +27,7 @@ class AntiNukeSettingsService {
 
   async get(guildId: string) {
     return db.antiNukeSettings.findUnique({
-      where: {
-        guildId,
-      },
+      where: { guildId },
     });
   }
 
@@ -44,9 +36,7 @@ class AntiNukeSettingsService {
     threshold: number,
   ) {
     return db.antiNukeSettings.upsert({
-      where: {
-        guildId,
-      },
+      where: { guildId },
       update: {
         threshold,
       },
@@ -54,6 +44,23 @@ class AntiNukeSettingsService {
         guildId,
         enabled: true,
         threshold,
+      },
+    });
+  }
+
+  async setPunishment(
+    guildId: string,
+    punishment: PunishmentType,
+  ) {
+    return db.antiNukeSettings.upsert({
+      where: { guildId },
+      update: {
+        punishment,
+      },
+      create: {
+        guildId,
+        enabled: true,
+        punishment,
       },
     });
   }
