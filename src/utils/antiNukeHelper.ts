@@ -3,7 +3,9 @@ import {
   Guild,
 } from "discord.js";
 
+import db from "../services/database.js";
 import auditLogService from "../services/auditLogService.js";
+import thresholdTracker from "./thresholdTracker.js";
 
 class AntiNukeHelper {
   async handle(
@@ -20,21 +22,57 @@ class AntiNukeHelper {
       return;
     }
 
-    // Ignore the bot itself
+    // Ignore bot
     if (executor.id === guild.client.user.id) {
       return;
     }
 
-    // Ignore the guild owner
+    // Ignore owner
     if (executor.id === guild.ownerId) {
       return;
     }
 
+    const settings =
+      await db.antiNukeSettings.findUnique({
+        where: {
+          guildId: guild.id,
+        },
+      });
+
+    if (
+      !settings ||
+      !settings.enabled
+    ) {
+      return;
+    }
+
+    const exceeded =
+      thresholdTracker.register(
+        guild.id,
+        executor.id,
+        action.toString(),
+        settings.threshold,
+        10_000,
+      );
+
+    if (!exceeded) {
+      console.log(
+        `[ANTI-NUKE] ${executor.tag} (${executor.id}) ${action} (${settings.threshold})`,
+      );
+      return;
+    }
+
     console.log(
-      `[ANTI-NUKE] ${executor.tag} (${executor.id}) performed ${AuditLogEvent[action]}`,
+      `[ANTI-NUKE] Threshold reached by ${executor.tag}`,
     );
 
-    // Threshold tracking will be added next.
+    thresholdTracker.clear(
+      guild.id,
+      executor.id,
+      action.toString(),
+    );
+
+    // Punishment comes next.
   }
 }
 
