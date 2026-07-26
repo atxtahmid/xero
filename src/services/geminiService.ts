@@ -7,9 +7,10 @@ const ai = new GoogleGenAI({
 });
 
 class GeminiService {
-  readonly model = "gemini-2.5-flash";
+  // Current supported Gemini model
+  readonly model = "gemini-2.5-flash-lite";
 
-  async generate(prompt: string) {
+  async generate(prompt: string): Promise<string> {
     const response = await ai.models.generateContent({
       model: this.model,
       contents: prompt,
