@@ -38,6 +38,25 @@ class AntiNukeSettingsService {
       },
     });
   }
+
+  async setThreshold(
+    guildId: string,
+    threshold: number,
+  ) {
+    return db.antiNukeSettings.upsert({
+      where: {
+        guildId,
+      },
+      update: {
+        threshold,
+      },
+      create: {
+        guildId,
+        enabled: true,
+        threshold,
+      },
+    });
+  }
 }
 
 export default new AntiNukeSettingsService();
