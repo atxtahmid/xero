@@ -1,7 +1,7 @@
 import {
   AuditLogEvent,
-  Channel,
   Events,
+  GuildBasedChannel,
 } from "discord.js";
 
 import antiNukeHelper from "../../utils/antiNukeHelper.js";
@@ -10,13 +10,9 @@ export default {
   name: Events.ChannelUpdate,
 
   async execute(
-    oldChannel: Channel,
-    newChannel: Channel,
+    oldChannel: GuildBasedChannel,
+    newChannel: GuildBasedChannel,
   ) {
-    if (!newChannel.guild) {
-      return;
-    }
-
     await antiNukeHelper.handle(
       newChannel.guild,
       AuditLogEvent.ChannelUpdate,
