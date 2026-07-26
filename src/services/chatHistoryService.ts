@@ -40,7 +40,10 @@ class ChatHistoryService {
     });
   }
 
-  async clearConversation(userId: string, guildId: string) {
+  async clearConversation(
+    userId: string,
+    guildId: string,
+  ) {
     return db.chatHistory.deleteMany({
       where: {
         userId,
@@ -52,7 +55,7 @@ class ChatHistoryService {
   private async trimConversation(
     userId: string,
     guildId: string,
-  ) {
+  ): Promise<void> {
     const messages = await db.chatHistory.findMany({
       where: {
         userId,
@@ -75,7 +78,9 @@ class ChatHistoryService {
     await db.chatHistory.deleteMany({
       where: {
         id: {
-          in: excess.map((message) => message.id),
+          in: excess.map(
+            (message: { id: string }) => message.id,
+          ),
         },
       },
     });
