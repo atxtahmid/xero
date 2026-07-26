@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "npm run deploy && node dist/index.js",
+    "build": "prisma generate && tsc",
+    "start": "prisma db push && npm run deploy && node dist/index.js",
     "deploy": "tsx src/deploy-commands.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
@@ -15,22 +15,22 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "discord.js": "^14.21.0",
     "@discordjs/rest": "^2.4.3",
-    "discord-api-types": "^0.37.119",
-    "dotenv": "^16.6.1",
-    "@prisma/client": "^6.14.0",
     "@google/genai": "^1.14.0",
-    "winston": "^3.17.0",
+    "@prisma/client": "^6.14.0",
     "axios": "^1.11.0",
+    "discord-api-types": "^0.37.119",
+    "discord.js": "^14.21.0",
+    "dotenv": "^16.6.1",
+    "winston": "^3.17.0",
     "zod": "^4.0.17"
   },
   "devDependencies": {
-    "typescript": "^5.9.2",
-    "tsx": "^4.20.5",
-    "prisma": "^6.14.0",
     "@types/node": "^24.3.0",
     "eslint": "^9.34.0",
-    "prettier": "^3.6.2"
+    "prettier": "^3.6.2",
+    "prisma": "^6.14.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
   }
 }
