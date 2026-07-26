@@ -1,50 +1,40 @@
 import {
   AuditLogEvent,
   Guild,
-  GuildMember,
 } from "discord.js";
 
-import db from "../services/database.js";
 import auditLogService from "../services/auditLogService.js";
-import punishmentService from "../services/punishmentService.js";
 
 class AntiNukeHelper {
   async handle(
     guild: Guild,
-    auditType: AuditLogEvent,
+    action: AuditLogEvent,
   ): Promise<void> {
-    const settings =
-      await db.antiNukeSettings.findUnique({
-        where: {
-          guildId: guild.id,
-        },
-      });
+    const executor =
+      await auditLogService.getExecutor(
+        guild,
+        action,
+      );
 
-    if (!settings?.enabled) {
+    if (!executor) {
       return;
     }
 
-    const entry = await auditLogService.getExecutor(
-      guild,
-      auditType,
+    // Ignore the bot itself
+    if (executor.id === guild.client.user.id) {
+      return;
+    }
+
+    // Ignore the guild owner
+    if (executor.id === guild.ownerId) {
+      return;
+    }
+
+    console.log(
+      `[ANTI-NUKE] ${executor.tag} (${executor.id}) performed ${AuditLogEvent[action]}`,
     );
 
-    if (!entry?.executor) {
-      return;
-    }
-
-    const member = await guild.members
-      .fetch(entry.executor.id)
-      .catch(() => null);
-
-    if (!member) {
-      return;
-    }
-
-    await punishmentService.punish(
-      member as GuildMember,
-      settings.punishment,
-    );
+    // Threshold tracking will be added next.
   }
 }
 

@@ -1,26 +1,38 @@
 import {
   AuditLogEvent,
   Guild,
-  GuildAuditLogsEntry,
+  User,
+  PartialUser,
 } from "discord.js";
 
 class AuditLogService {
   async getExecutor(
     guild: Guild,
-    type: AuditLogEvent,
-  ): Promise<GuildAuditLogsEntry | null> {
-    const logs = await guild.fetchAuditLogs({
-      type,
-      limit: 1,
-    });
+    action: AuditLogEvent,
+  ): Promise<User | PartialUser | null> {
+    try {
+      const logs = await guild.fetchAuditLogs({
+        type: action,
+        limit: 1,
+      });
 
-    const entry = logs.entries.first();
+      const entry = logs.entries.first();
 
-    if (!entry) {
+      if (!entry?.executor) {
+        return null;
+      }
+
+      const age =
+        Date.now() - entry.createdTimestamp;
+
+      if (age > 10_000) {
+        return null;
+      }
+
+      return entry.executor;
+    } catch {
       return null;
     }
-
-    return entry;
   }
 }
 
