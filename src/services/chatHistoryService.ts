@@ -9,6 +9,28 @@ class ChatHistoryService {
     role: string,
     content: string,
   ) {
+    // Ensure the user exists
+    await db.user.upsert({
+      where: {
+        id: userId,
+      },
+      update: {},
+      create: {
+        id: userId,
+      },
+    });
+
+    // Ensure the guild exists
+    await db.guild.upsert({
+      where: {
+        id: guildId,
+      },
+      update: {},
+      create: {
+        id: guildId,
+      },
+    });
+
     const message = await db.chatHistory.create({
       data: {
         userId,
