@@ -3,22 +3,39 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import type { Command } from "../../types/Command.js";
+import {
+  Permission,
+  type Command,
+} from "../../types/Command.js";
 
 const command: Command = {
+  permissions: [
+    Permission.USER,
+  ],
+
+  guildOnly: false,
+
+  cooldown: 3,
+
   data: new SlashCommandBuilder()
     .setName("ping")
     .setDescription("Check the bot's latency."),
 
-  async execute(interaction: ChatInputCommandInteraction) {
+  async execute(
+    interaction: ChatInputCommandInteraction,
+  ) {
     const sent = await interaction.reply({
       content: "🏓 Pinging...",
       fetchReply: true,
     });
 
-    const apiLatency = Math.round(interaction.client.ws.ping);
+    const apiLatency = Math.round(
+      interaction.client.ws.ping,
+    );
+
     const botLatency =
-      sent.createdTimestamp - interaction.createdTimestamp;
+      sent.createdTimestamp -
+      interaction.createdTimestamp;
 
     await interaction.editReply({
       content: [

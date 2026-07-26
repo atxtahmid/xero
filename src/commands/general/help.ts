@@ -4,17 +4,32 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import type { Command } from "../../types/Command.js";
+import {
+  Permission,
+  type Command,
+} from "../../types/Command.js";
 
 const command: Command = {
+  permissions: [
+    Permission.USER,
+  ],
+
+  guildOnly: false,
+
+  cooldown: 3,
+
   data: new SlashCommandBuilder()
     .setName("help")
     .setDescription("View the list of available commands."),
 
-  async execute(interaction: ChatInputCommandInteraction) {
+  async execute(
+    interaction: ChatInputCommandInteraction,
+  ) {
     const embed = new EmbedBuilder()
       .setTitle("📖 Xero Help")
-      .setDescription("Here are the currently available commands:")
+      .setDescription(
+        "Here are the currently available commands:",
+      )
       .addFields(
         {
           name: "/ping",
@@ -30,7 +45,7 @@ const command: Command = {
           name: "/about",
           value: "Learn more about Xero.",
           inline: false,
-        }
+        },
       )
       .setColor(0x57f287)
       .setTimestamp()

@@ -5,6 +5,8 @@ import {
 
 import db from "../services/database.js";
 import auditLogService from "../services/auditLogService.js";
+import antiNukeWhitelistService from "../services/antiNukeWhitelistService.js";
+import globalOwnerService from "../services/globalOwnerService.js";
 import thresholdTracker from "./thresholdTracker.js";
 
 class AntiNukeHelper {
@@ -22,12 +24,21 @@ class AntiNukeHelper {
       return;
     }
 
-    // Ignore bot
+    // Ignore the bot itself.
     if (executor.id === guild.client.user.id) {
       return;
     }
 
-    // Ignore owner
+    // Global Owner bypass.
+    if (
+      globalOwnerService.isGlobalOwner(
+        executor.id,
+      )
+    ) {
+      return;
+    }
+
+    // Server Owner bypass.
     if (executor.id === guild.ownerId) {
       return;
     }
@@ -43,6 +54,33 @@ class AntiNukeHelper {
       !settings ||
       !settings.enabled
     ) {
+      return;
+    }
+
+    // Co-Owner bypass.
+    const coOwner =
+      await db.antiNukeCoOwner.findUnique({
+        where: {
+          guildId_userId: {
+            guildId: guild.id,
+            userId: executor.id,
+          },
+        },
+      });
+
+    if (coOwner) {
+      return;
+    }
+
+    // Whitelist bypass.
+    const whitelisted =
+      await antiNukeWhitelistService.isWhitelisted(
+        guild.id,
+        executor.id,
+        action.toString(),
+      );
+
+    if (whitelisted) {
       return;
     }
 

@@ -3,15 +3,28 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import type { Command } from "../../types/Command.js";
+import {
+  Permission,
+  type Command,
+} from "../../types/Command.js";
 import chatHistoryService from "../../services/chatHistoryService.js";
 
 const command: Command = {
+  permissions: [
+    Permission.USER,
+  ],
+
+  guildOnly: true,
+
+  cooldown: 5,
+
   data: new SlashCommandBuilder()
     .setName("clear")
     .setDescription("Clear your AI conversation history."),
 
-  async execute(interaction: ChatInputCommandInteraction) {
+  async execute(
+    interaction: ChatInputCommandInteraction,
+  ) {
     await interaction.deferReply({
       ephemeral: true,
     });

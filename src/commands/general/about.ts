@@ -4,18 +4,31 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import type { Command } from "../../types/Command.js";
+import {
+  Permission,
+  type Command,
+} from "../../types/Command.js";
 
 const command: Command = {
+  permissions: [
+    Permission.USER,
+  ],
+
+  guildOnly: false,
+
+  cooldown: 3,
+
   data: new SlashCommandBuilder()
     .setName("about")
     .setDescription("Learn more about Xero."),
 
-  async execute(interaction: ChatInputCommandInteraction) {
+  async execute(
+    interaction: ChatInputCommandInteraction,
+  ) {
     const embed = new EmbedBuilder()
       .setTitle("❄️ About Xero")
       .setDescription(
-        "Xero is a modern all-in-one Discord bot built with a focus on performance, scalability, and a clean architecture."
+        "Xero is a modern all-in-one Discord bot built with a focus on performance, scalability, and a clean architecture.",
       )
       .addFields(
         {
@@ -40,7 +53,7 @@ const command: Command = {
           name: "🚀 Status",
           value: "Development",
           inline: true,
-        }
+        },
       )
       .setColor(0x2ecc71)
       .setTimestamp()

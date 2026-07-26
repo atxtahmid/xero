@@ -1,14 +1,25 @@
 import {
   ChatInputCommandInteraction,
-  PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
 
 import { PunishmentType } from "@prisma/client";
 
+import {
+  Permission,
+  type Command,
+} from "../../types/Command.js";
 import antiNukeSettingsService from "../../services/antiNukeSettingsService.js";
 
-export default {
+const command: Command = {
+  permissions: [
+    Permission.ANTINUKE,
+  ],
+
+  guildOnly: true,
+
+  cooldown: 3,
+
   data: new SlashCommandBuilder()
     .setName("antinuke-punishment")
     .setDescription("Set the Anti-Nuke punishment.")
@@ -35,20 +46,19 @@ export default {
             value: PunishmentType.BAN,
           },
         ),
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.Administrator,
     ),
 
   async execute(
     interaction: ChatInputCommandInteraction,
-  ) {
+  ): Promise<void> {
     if (!interaction.guild) {
-      return interaction.reply({
+      await interaction.reply({
         content:
           "❌ This command can only be used in a server.",
         ephemeral: true,
       });
+
+      return;
     }
 
     const punishment =
@@ -68,3 +78,5 @@ export default {
     });
   },
 };
+
+export default command;
