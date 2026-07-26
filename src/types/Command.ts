@@ -1,10 +1,13 @@
 import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
+  SlashCommandOptionsOnlyBuilder,
 } from "discord.js";
 
 export interface Command {
-  data: SlashCommandBuilder;
+  data:
+    | SlashCommandBuilder
+    | SlashCommandOptionsOnlyBuilder;
 
   execute(
     interaction: ChatInputCommandInteraction
