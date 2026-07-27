@@ -1,10 +1,10 @@
 import {
-  GuildTextBasedChannel,
   PermissionFlagsBits,
+  TextChannel,
 } from "discord.js";
 
 export async function isChannelLocked(
-  channel: GuildTextBasedChannel,
+  channel: TextChannel,
 ): Promise<boolean> {
   const overwrite =
     channel.permissionOverwrites.cache.get(
@@ -19,7 +19,7 @@ export async function isChannelLocked(
 }
 
 export async function lockChannel(
-  channel: GuildTextBasedChannel,
+  channel: TextChannel,
 ): Promise<void> {
   await channel.permissionOverwrites.edit(
     channel.guild.roles.everyone,
@@ -30,7 +30,7 @@ export async function lockChannel(
 }
 
 export async function unlockChannel(
-  channel: GuildTextBasedChannel,
+  channel: TextChannel,
 ): Promise<void> {
   await channel.permissionOverwrites.edit(
     channel.guild.roles.everyone,

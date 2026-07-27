@@ -4,6 +4,7 @@ import {
   EmbedBuilder,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  TextChannel,
 } from "discord.js";
 
 import {
@@ -79,8 +80,10 @@ const command: Command = {
       );
 
     if (
-      !channel.isTextBased() ||
-      !("send" in channel)
+      channel.type !==
+        ChannelType.GuildText &&
+      channel.type !==
+        ChannelType.GuildAnnouncement
     ) {
       await interaction.reply({
         content:
@@ -90,6 +93,9 @@ const command: Command = {
 
       return;
     }
+
+    const target =
+      channel as TextChannel;
 
     const embed =
       new EmbedBuilder()
@@ -101,7 +107,7 @@ const command: Command = {
         })
         .setTimestamp();
 
-    await channel.send({
+    await target.send({
       embeds: [embed],
     });
 

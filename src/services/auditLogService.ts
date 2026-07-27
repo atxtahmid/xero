@@ -91,17 +91,23 @@ class AuditLogService {
         | GuildAuditLogsEntry
         | undefined;
 
-    if (!entry?.executor) {
+    const executor =
+      entry?.executor;
+
+    if (
+      !executor ||
+      executor.partial
+    ) {
       return null;
     }
 
     auditCacheService.set(
       guild.id,
       action,
-      entry.executor,
+      executor,
     );
 
-    return entry.executor;
+    return executor;
   }
 }
 

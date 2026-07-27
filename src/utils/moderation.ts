@@ -93,5 +93,7 @@ export function canModerate(
     };
   }
 
-  return {
-    success
+return {
+    success: true,
+  };
+}

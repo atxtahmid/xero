@@ -7,7 +7,7 @@ import antiNukeHelper from "../../utils/antiNukeHelper.js";
 import { AntiNukeAction } from "../../utils/antiNukeActions.js";
 
 export default {
-  name: Events.RoleDelete,
+  name: Events.GuildRoleDelete,
 
   async execute(
     role: Role,

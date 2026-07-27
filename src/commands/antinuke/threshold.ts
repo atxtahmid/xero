@@ -7,10 +7,8 @@ import {
 import type { Command } from "../../types/Command.js";
 
 import antiNukeSettingsService from "../../services/antiNukeSettingsService.js";
-import {
-  PermissionLevel,
-  requirePermission,
-} from "../../utils/permissions.js";
+import { Permission } from "../../types/Command.js";
+import { hasPermission } from "../../utils/permissions.js";
 
 const actionMap: Record<string, string> = {
   bot_add: "botAddThreshold",
@@ -32,7 +30,7 @@ const actionMap: Record<string, string> = {
 };
 
 const command: Command = {
-  permissions: [PermissionLevel.ADMIN],
+  permissions: [Permission.ADMIN],
 
   data: new SlashCommandBuilder()
     .setName("antinuke-threshold")
@@ -49,7 +47,6 @@ const command: Command = {
             name: "Bot Add",
             value: "bot_add",
           },
-
           {
             name: "Mass Ban",
             value: "mass_ban",
@@ -58,7 +55,6 @@ const command: Command = {
             name: "Mass Kick",
             value: "mass_kick",
           },
-
           {
             name: "Channel Delete",
             value: "channel_delete",
@@ -71,7 +67,6 @@ const command: Command = {
             name: "Channel Update",
             value: "channel_update",
           },
-
           {
             name: "Role Delete",
             value: "role_delete",
@@ -84,12 +79,10 @@ const command: Command = {
             name: "Role Update",
             value: "role_update",
           },
-
           {
             name: "Webhook Create",
             value: "webhook_create",
           },
-
           {
             name: "Server Update",
             value: "server_update",
@@ -114,11 +107,17 @@ const command: Command = {
     interaction: ChatInputCommandInteraction,
   ): Promise<void> {
     if (
-      !(await requirePermission(
+      !(await hasPermission(
         interaction,
-        PermissionLevel.ADMIN,
+        command.permissions,
       ))
     ) {
+      await interaction.reply({
+        content:
+          "❌ You don't have permission to use this command.",
+        ephemeral: true,
+      });
+
       return;
     }
 
@@ -144,8 +143,7 @@ const command: Command = {
         true,
       );
 
-    const field =
-      actionMap[action];
+    const field = actionMap[action];
 
     if (!field) {
       await interaction.reply({
@@ -164,8 +162,10 @@ const command: Command = {
     );
 
     await interaction.reply({
-      content:
-        `✅ Updated **${action.replaceAll("_", " ")}** threshold to **${value}**.`,
+      content: `✅ Updated **${action.replaceAll(
+        "_",
+        " ",
+      )}** threshold to **${value}**.`,
       ephemeral: true,
     });
   },

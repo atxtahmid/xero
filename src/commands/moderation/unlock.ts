@@ -1,3 +1,5 @@
+import { TextChannel } from "discord.js";
+
 import {
   ChannelType,
   ChatInputCommandInteraction,
@@ -23,47 +25,49 @@ const command: Command = {
 
   cooldown: 5,
 
-  data: new SlashCommandBuilder()
-    .setName("unlock")
-    .setDescription("Unlock channels.")
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.ManageChannels,
-    )
+  data: (
+    new SlashCommandBuilder()
+      .setName("unlock")
+      .setDescription("Unlock channels.")
+      .setDefaultMemberPermissions(
+        PermissionFlagsBits.ManageChannels,
+      )
 
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("current")
-        .setDescription(
-          "Unlock the current channel.",
-        ),
-    )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName("current")
+          .setDescription(
+            "Unlock the current channel.",
+          ),
+      )
 
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("channel")
-        .setDescription(
-          "Unlock a specific channel.",
-        )
-        .addChannelOption((option) =>
-          option
-            .setName("channel")
-            .setDescription(
-              "Channel to unlock.",
-            )
-            .addChannelTypes(
-              ChannelType.GuildText,
-            )
-            .setRequired(true),
-        ),
-    )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName("channel")
+          .setDescription(
+            "Unlock a specific channel.",
+          )
+          .addChannelOption((option) =>
+            option
+              .setName("channel")
+              .setDescription(
+                "Channel to unlock.",
+              )
+              .addChannelTypes(
+                ChannelType.GuildText,
+              )
+              .setRequired(true),
+          ),
+      )
 
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("all")
-        .setDescription(
-          "Unlock every text channel.",
-        ),
-    ),
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName("all")
+          .setDescription(
+            "Unlock every text channel.",
+          ),
+      )
+  ) as SlashCommandBuilder,
 
   async execute(
     interaction: ChatInputCommandInteraction,
@@ -125,7 +129,9 @@ const command: Command = {
         return;
       }
 
-      await unlockChannel(channel);
+      await unlockChannel(
+        channel as TextChannel,
+      );
 
       await interaction.editReply(
         `🔓 ${channel} unlocked.`,
@@ -146,7 +152,7 @@ const command: Command = {
 
       try {
         await unlockChannel(
-          channel,
+          channel as TextChannel,
         );
 
         count++;

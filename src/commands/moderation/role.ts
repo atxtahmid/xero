@@ -1,6 +1,7 @@
 import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
+  Role,
   SlashCommandBuilder,
 } from "discord.js";
 
@@ -23,7 +24,7 @@ const command: Command = {
 
   cooldown: 3,
 
-  data: new SlashCommandBuilder()
+  data: (new SlashCommandBuilder()
     .setName("role")
     .setDescription(
       "Add or remove a role from a member.",
@@ -76,7 +77,7 @@ const command: Command = {
             )
             .setRequired(true),
         ),
-    ),
+    )) as SlashCommandBuilder,
 
   async execute(
     interaction: ChatInputCommandInteraction,
@@ -131,6 +132,16 @@ const command: Command = {
         true,
       );
 
+    if (!(role instanceof Role)) {
+      await interaction.reply({
+        content:
+          "❌ Invalid role.",
+        ephemeral: true,
+      });
+
+      return;
+    }
+
     const me =
       interaction.guild.members.me;
 
@@ -165,7 +176,8 @@ const command: Command = {
       await member.roles.add(role);
 
       await interaction.reply({
-        content: `✅ Added ${role} to ${member}.`,
+        content:
+          `✅ Added ${role} to ${member}.`,
       });
 
       return;
@@ -184,7 +196,8 @@ const command: Command = {
     await member.roles.remove(role);
 
     await interaction.reply({
-      content: `✅ Removed ${role} from ${member}.`,
+      content:
+        `✅ Removed ${role} from ${member}.`,
     });
   },
 };

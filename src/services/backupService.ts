@@ -44,43 +44,59 @@ class BackupService {
       });
     }
 
-    const channels =
-      guild.channels.cache.sort(
+    const channels = [
+      ...guild.channels.cache.values(),
+    ]
+      .filter(
+        (channel) =>
+          "rawPosition" in channel &&
+          "permissionOverwrites" in channel,
+      )
+      .sort(
         (a, b) =>
-          a.rawPosition -
-          b.rawPosition,
+          (a as any).rawPosition -
+          (b as any).rawPosition,
       );
 
-    for (const channel of channels.values()) {
+    for (const channel of channels) {
+      const guildChannel =
+        channel as any;
+
       const savedChannel =
         await db.channelBackup.create({
           data: {
             backupId: backup.id,
 
-            channelId: channel.id,
-            parentId:
-              channel.parentId,
+            channelId:
+              guildChannel.id,
 
-            name: channel.name,
-            type: channel.type,
+            parentId:
+              guildChannel.parentId,
+
+            name:
+              guildChannel.name,
+
+            type:
+              guildChannel.type,
 
             position:
-              channel.rawPosition,
+              guildChannel.rawPosition,
 
             topic:
-              channel.type ===
+              guildChannel.type ===
               ChannelType.GuildText
-                ? channel.topic
+                ? guildChannel.topic
                 : null,
 
             nsfw:
-              "nsfw" in channel
-                ? channel.nsfw
+              "nsfw" in
+              guildChannel
+                ? guildChannel.nsfw
                 : false,
           },
         });
 
-      for (const overwrite of channel.permissionOverwrites.cache.values()) {
+      for (const overwrite of guildChannel.permissionOverwrites.cache.values()) {
         await db.channelPermissionOverwrite.create(
           {
             data: {

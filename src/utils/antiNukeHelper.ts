@@ -8,7 +8,7 @@ import punishmentService from "../services/punishmentService.js";
 import antiNukeLogService from "../services/antiNukeLogService.js";
 import restoreService from "../services/restoreService.js";
 
-import globalOwnerService from "./globalOwner.js";
+import * as globalOwnerService from "./globalOwner.js";
 import thresholdTracker from "./thresholdTracker.js";
 import { AntiNukeAction } from "./antiNukeActions.js";
 
@@ -113,12 +113,10 @@ class AntiNukeHelper {
       return false;
     }
 
-    // Ignore the bot itself
     if (executor.id === guild.client.user?.id) {
       return false;
     }
 
-    // Global owner bypass
     if (
       globalOwnerService.isGlobalOwner(
         executor.id,
@@ -127,7 +125,6 @@ class AntiNukeHelper {
       return false;
     }
 
-    // Guild owner bypass
     if (executor.id === guild.ownerId) {
       return false;
     }
@@ -139,11 +136,7 @@ class AntiNukeHelper {
         },
       });
 
-    if (!settings) {
-      return false;
-    }
-
-    if (!settings.enabled) {
+    if (!settings || !settings.enabled) {
       return false;
     }
 
@@ -156,7 +149,6 @@ class AntiNukeHelper {
       return false;
     }
 
-    // Co-owner bypass
     const coOwner =
       await db.antiNukeCoOwner.findUnique({
         where: {
@@ -171,7 +163,6 @@ class AntiNukeHelper {
       return false;
     }
 
-    // Whitelist bypass
     const whitelisted =
       await antiNukeWhitelistService.isWhitelisted(
         guild.id,
@@ -216,14 +207,18 @@ class AntiNukeHelper {
       action,
     );
 
-    // Punish attacker
-    await punishmentService.execute(
-      guild,
-      executor,
-      settings.punishment,
-    );
+    const member =
+      await guild.members
+        .fetch(executor.id)
+        .catch(() => null);
 
-    // Attempt automatic recovery
+    if (member) {
+      await punishmentService.punish(
+        member,
+        settings.punishment,
+      );
+    }
+
     try {
       await restoreService.restore(
         guild,
@@ -239,7 +234,6 @@ class AntiNukeHelper {
       );
     }
 
-    // Send log
     await antiNukeLogService.send(
       guild,
       executor.id,

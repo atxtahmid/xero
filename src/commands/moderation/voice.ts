@@ -3,6 +3,7 @@ import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  VoiceBasedChannel,
 } from "discord.js";
 
 import {
@@ -24,100 +25,102 @@ const command: Command = {
 
   cooldown: 3,
 
-  data: new SlashCommandBuilder()
-    .setName("voice")
-    .setDescription(
-      "Voice moderation commands.",
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.ModerateMembers,
-    )
+  data: (
+    new SlashCommandBuilder()
+      .setName("voice")
+      .setDescription(
+        "Voice moderation commands.",
+      )
+      .setDefaultMemberPermissions(
+        PermissionFlagsBits.ModerateMembers,
+      )
 
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("mute")
-        .setDescription("Mute a member.")
-        .addUserOption((option) =>
-          option
-            .setName("user")
-            .setDescription("Member to mute.")
-            .setRequired(true),
-        ),
-    )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName("mute")
+          .setDescription("Mute a member.")
+          .addUserOption((option) =>
+            option
+              .setName("user")
+              .setDescription("Member to mute.")
+              .setRequired(true),
+          ),
+      )
 
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("unmute")
-        .setDescription("Unmute a member.")
-        .addUserOption((option) =>
-          option
-            .setName("user")
-            .setDescription("Member to unmute.")
-            .setRequired(true),
-        ),
-    )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName("unmute")
+          .setDescription("Unmute a member.")
+          .addUserOption((option) =>
+            option
+              .setName("user")
+              .setDescription("Member to unmute.")
+              .setRequired(true),
+          ),
+      )
 
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("deafen")
-        .setDescription("Deafen a member.")
-        .addUserOption((option) =>
-          option
-            .setName("user")
-            .setDescription("Member to deafen.")
-            .setRequired(true),
-        ),
-    )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName("deafen")
+          .setDescription("Deafen a member.")
+          .addUserOption((option) =>
+            option
+              .setName("user")
+              .setDescription("Member to deafen.")
+              .setRequired(true),
+          ),
+      )
 
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("undeafen")
-        .setDescription("Undeafen a member.")
-        .addUserOption((option) =>
-          option
-            .setName("user")
-            .setDescription("Member to undeafen.")
-            .setRequired(true),
-        ),
-    )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName("undeafen")
+          .setDescription("Undeafen a member.")
+          .addUserOption((option) =>
+            option
+              .setName("user")
+              .setDescription("Member to undeafen.")
+              .setRequired(true),
+          ),
+      )
 
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("disconnect")
-        .setDescription("Disconnect a member.")
-        .addUserOption((option) =>
-          option
-            .setName("user")
-            .setDescription("Member to disconnect.")
-            .setRequired(true),
-        ),
-    )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName("disconnect")
+          .setDescription("Disconnect a member.")
+          .addUserOption((option) =>
+            option
+              .setName("user")
+              .setDescription("Member to disconnect.")
+              .setRequired(true),
+          ),
+      )
 
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("move")
-        .setDescription(
-          "Move a member to another voice channel.",
-        )
-        .addUserOption((option) =>
-          option
-            .setName("user")
-            .setDescription("Member to move.")
-            .setRequired(true),
-        )
-        .addChannelOption((option) =>
-          option
-            .setName("channel")
-            .setDescription(
-              "Destination voice channel.",
-            )
-            .addChannelTypes(
-              ChannelType.GuildVoice,
-              ChannelType.GuildStageVoice,
-            )
-            .setRequired(true),
-        ),
-    ),
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName("move")
+          .setDescription(
+            "Move a member to another voice channel.",
+          )
+          .addUserOption((option) =>
+            option
+              .setName("user")
+              .setDescription("Member to move.")
+              .setRequired(true),
+          )
+          .addChannelOption((option) =>
+            option
+              .setName("channel")
+              .setDescription(
+                "Destination voice channel.",
+              )
+              .addChannelTypes(
+                ChannelType.GuildVoice,
+                ChannelType.GuildStageVoice,
+              )
+              .setRequired(true),
+          ),
+      )
+  ) as SlashCommandBuilder,
 
   async execute(
     interaction: ChatInputCommandInteraction,
@@ -220,10 +223,10 @@ const command: Command = {
           interaction.options.getChannel(
             "channel",
             true,
-          );
+          ) as VoiceBasedChannel;
 
         await member.voice.setChannel(
-          channel.id,
+          channel,
         );
 
         await interaction.reply({

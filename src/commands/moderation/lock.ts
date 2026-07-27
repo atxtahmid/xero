@@ -3,6 +3,7 @@ import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  TextChannel,
 } from "discord.js";
 
 import {
@@ -23,7 +24,7 @@ const command: Command = {
 
   cooldown: 5,
 
-  data: new SlashCommandBuilder()
+  data: (new SlashCommandBuilder()
     .setName("lock")
     .setDescription("Lock channels.")
     .setDefaultMemberPermissions(
@@ -63,7 +64,7 @@ const command: Command = {
         .setDescription(
           "Lock every text channel.",
         ),
-    ),
+    )) as SlashCommandBuilder,
 
   async execute(
     interaction: ChatInputCommandInteraction,
@@ -97,7 +98,7 @@ const command: Command = {
       }
 
       await lockChannel(
-        interaction.channel,
+        interaction.channel as TextChannel,
       );
 
       await interaction.editReply(
@@ -125,7 +126,9 @@ const command: Command = {
         return;
       }
 
-      await lockChannel(channel);
+      await lockChannel(
+        channel as TextChannel,
+      );
 
       await interaction.editReply(
         `🔒 ${channel} locked.`,
@@ -145,10 +148,14 @@ const command: Command = {
       }
 
       try {
-        await lockChannel(channel);
+        await lockChannel(
+          channel as TextChannel,
+        );
 
         count++;
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
 
     await interaction.editReply(

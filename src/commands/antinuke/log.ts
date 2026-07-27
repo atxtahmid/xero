@@ -7,28 +7,32 @@ import {
 
 import type { Command } from "../../types/Command.js";
 
+import { Permission } from "../../types/Command.js";
 import db from "../../services/database.js";
-import {
-  PermissionLevel,
-  requirePermission,
-} from "../../utils/permissions.js";
+import { hasPermission } from "../../utils/permissions.js";
 
 const command: Command = {
-  permissions: [PermissionLevel.ADMIN],
+  permissions: [Permission.ADMIN],
 
   data: new SlashCommandBuilder()
     .setName("antinuke-log")
-    .setDescription("Configure the Anti-Nuke log channel.")
+    .setDescription(
+      "Configure the Anti-Nuke log channel.",
+    )
 
     .addSubcommand((subcommand) =>
       subcommand
         .setName("set")
-        .setDescription("Set the Anti-Nuke log channel.")
+        .setDescription(
+          "Set the Anti-Nuke log channel.",
+        )
         .addChannelOption((option) =>
           option
             .setName("channel")
             .setDescription("Log channel")
-            .addChannelTypes(ChannelType.GuildText)
+            .addChannelTypes(
+              ChannelType.GuildText,
+            )
             .setRequired(true),
         ),
     )
@@ -36,28 +40,38 @@ const command: Command = {
     .addSubcommand((subcommand) =>
       subcommand
         .setName("remove")
-        .setDescription("Remove the Anti-Nuke log channel."),
+        .setDescription(
+          "Remove the Anti-Nuke log channel.",
+        ),
     )
 
     .addSubcommand((subcommand) =>
       subcommand
         .setName("view")
-        .setDescription("View the current Anti-Nuke log channel."),
+        .setDescription(
+          "View the current Anti-Nuke log channel.",
+        ),
     )
 
     .setDefaultMemberPermissions(
       PermissionFlagsBits.Administrator,
-    ),
+    ) as Command["data"],
 
   async execute(
     interaction: ChatInputCommandInteraction,
   ): Promise<void> {
     if (
-      !(await requirePermission(
+      !(await hasPermission(
         interaction,
-        PermissionLevel.ADMIN,
+        [Permission.ADMIN],
       ))
     ) {
+      await interaction.reply({
+        content:
+          "❌ You do not have permission to use this command.",
+        ephemeral: true,
+      });
+
       return;
     }
 
@@ -87,11 +101,13 @@ const command: Command = {
             guildId: interaction.guild.id,
           },
           update: {
-            antiNukeLogChannelId: channel.id,
+            antiNukeLogChannelId:
+              channel.id,
           },
           create: {
             guildId: interaction.guild.id,
-            antiNukeLogChannelId: channel.id,
+            antiNukeLogChannelId:
+              channel.id,
           },
         });
 
@@ -129,7 +145,8 @@ const command: Command = {
         const settings =
           await db.guildSettings.findUnique({
             where: {
-              guildId: interaction.guild.id,
+              guildId:
+                interaction.guild.id,
             },
           });
 

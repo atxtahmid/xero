@@ -1,9 +1,10 @@
 import {
   CategoryChannel,
   ChannelType,
+  Guild,
+  GuildChannelTypes,
   OverwriteType,
   PermissionsBitField,
-  Guild,
 } from "discord.js";
 
 import backupService from "./backupService.js";
@@ -146,9 +147,8 @@ class RestoreService {
           );
 
         if (
-          found &&
-          found.type ===
-            ChannelType.GuildCategory
+          found?.type ===
+          ChannelType.GuildCategory
         ) {
           parent =
             found as CategoryChannel;
@@ -159,7 +159,7 @@ class RestoreService {
         await guild.channels.create({
           name: channel.name,
           type:
-            channel.type as ChannelType,
+            channel.type as GuildChannelTypes,
           parent,
           position:
             channel.position,
@@ -186,8 +186,7 @@ class RestoreService {
       }
 
       if (
-        channel.overwrites
-          ?.length
+        channel.overwrites?.length
       ) {
         await created.permissionOverwrites.set(
           channel.overwrites.map(
@@ -196,8 +195,7 @@ class RestoreService {
             ) => ({
               id: overwrite.targetId,
               type:
-                overwrite.type ===
-                0
+                overwrite.type === 0
                   ? OverwriteType.Role
                   : OverwriteType.Member,
               allow:

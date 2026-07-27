@@ -3,6 +3,7 @@ import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  VoiceBasedChannel,
 } from "discord.js";
 
 import {
@@ -19,38 +20,40 @@ const command: Command = {
 
   cooldown: 10,
 
-  data: new SlashCommandBuilder()
-    .setName("moveall")
-    .setDescription(
-      "Move everyone from one voice channel to another.",
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.MoveMembers,
-    )
-    .addChannelOption((option) =>
-      option
-        .setName("from")
-        .setDescription(
-          "Source voice channel.",
-        )
-        .addChannelTypes(
-          ChannelType.GuildVoice,
-          ChannelType.GuildStageVoice,
-        )
-        .setRequired(true),
-    )
-    .addChannelOption((option) =>
-      option
-        .setName("to")
-        .setDescription(
-          "Destination voice channel.",
-        )
-        .addChannelTypes(
-          ChannelType.GuildVoice,
-          ChannelType.GuildStageVoice,
-        )
-        .setRequired(true),
-    ),
+  data: (
+    new SlashCommandBuilder()
+      .setName("moveall")
+      .setDescription(
+        "Move everyone from one voice channel to another.",
+      )
+      .setDefaultMemberPermissions(
+        PermissionFlagsBits.MoveMembers,
+      )
+      .addChannelOption((option) =>
+        option
+          .setName("from")
+          .setDescription(
+            "Source voice channel.",
+          )
+          .addChannelTypes(
+            ChannelType.GuildVoice,
+            ChannelType.GuildStageVoice,
+          )
+          .setRequired(true),
+      )
+      .addChannelOption((option) =>
+        option
+          .setName("to")
+          .setDescription(
+            "Destination voice channel.",
+          )
+          .addChannelTypes(
+            ChannelType.GuildVoice,
+            ChannelType.GuildStageVoice,
+          )
+          .setRequired(true),
+      )
+  ) as SlashCommandBuilder,
 
   async execute(
     interaction: ChatInputCommandInteraction,
@@ -59,36 +62,13 @@ const command: Command = {
       interaction.options.getChannel(
         "from",
         true,
-      );
+      ) as VoiceBasedChannel;
 
     const to =
       interaction.options.getChannel(
         "to",
         true,
-      );
-
-    if (
-      !(
-        from.type ===
-          ChannelType.GuildVoice ||
-        from.type ===
-          ChannelType.GuildStageVoice
-      ) ||
-      !(
-        to.type ===
-          ChannelType.GuildVoice ||
-        to.type ===
-          ChannelType.GuildStageVoice
-      )
-    ) {
-      await interaction.reply({
-        content:
-          "❌ Invalid voice channels.",
-        ephemeral: true,
-      });
-
-      return;
-    }
+      ) as VoiceBasedChannel;
 
     const members = [
       ...from.members.values(),

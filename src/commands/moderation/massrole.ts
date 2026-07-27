@@ -1,6 +1,7 @@
 import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
+  Role,
   SlashCommandBuilder,
 } from "discord.js";
 
@@ -18,7 +19,7 @@ const command: Command = {
 
   cooldown: 10,
 
-  data: new SlashCommandBuilder()
+  data: (new SlashCommandBuilder()
     .setName("massrole")
     .setDescription(
       "Add or remove a role from multiple members.",
@@ -55,7 +56,7 @@ const command: Command = {
             )
             .setRequired(true),
         ),
-    ),
+    )) as SlashCommandBuilder,
 
   async execute(
     interaction: ChatInputCommandInteraction,
@@ -77,6 +78,15 @@ const command: Command = {
         "role",
         true,
       );
+
+    if (!(role instanceof Role)) {
+      await interaction.editReply({
+        content:
+          "❌ Invalid role.",
+      });
+
+      return;
+    }
 
     const me =
       interaction.guild.members.me;
@@ -122,7 +132,9 @@ const command: Command = {
             affected++;
           }
         }
-      } catch {}
+      } catch {
+        // Ignore members that cannot be modified.
+      }
     }
 
     await interaction.editReply({

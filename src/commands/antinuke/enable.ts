@@ -6,14 +6,12 @@ import {
 
 import type { Command } from "../../types/Command.js";
 
+import { Permission } from "../../types/Command.js";
 import antiNukeSettingsService from "../../services/antiNukeSettingsService.js";
-import {
-  PermissionLevel,
-  requirePermission,
-} from "../../utils/permissions.js";
+import { hasPermission } from "../../utils/permissions.js";
 
 const command: Command = {
-  permissions: [PermissionLevel.ADMIN],
+  permissions: [Permission.ADMIN],
 
   data: new SlashCommandBuilder()
     .setName("antinuke-enable")
@@ -26,11 +24,17 @@ const command: Command = {
     interaction: ChatInputCommandInteraction,
   ): Promise<void> {
     if (
-      !(await requirePermission(
+      !(await hasPermission(
         interaction,
-        PermissionLevel.ADMIN,
+        [Permission.ADMIN],
       ))
     ) {
+      await interaction.reply({
+        content:
+          "❌ You do not have permission to use this command.",
+        ephemeral: true,
+      });
+
       return;
     }
 
