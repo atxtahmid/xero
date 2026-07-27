@@ -14,14 +14,26 @@ enum PunishmentType {
   BAN
 }
 
+enum ModerationAction {
+  WARN
+  KICK
+  BAN
+  SOFT_BAN
+  TEMP_BAN
+  TIMEOUT
+  TIMEOUT_REMOVED
+}
+
 model User {
   id           String        @id
   username     String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  chatHistory  ChatHistory[]
-  warnings     Warning[]
+chatHistory      ChatHistory[]
+warnings         Warning[]
+cases            Case[] @relation("CaseTarget")
+moderatedCases   Case[] @relation("CaseModerator")
 }
 
 model Guild {
@@ -30,11 +42,12 @@ model Guild {
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
-  settings           GuildSettings?
-  chatHistory        ChatHistory[]
-  warnings           Warning[]
-  antiNukeSettings   AntiNukeSettings?
-  coOwners           AntiNukeCoOwner[]
+settings           GuildSettings?
+chatHistory        ChatHistory[]
+warnings           Warning[]
+cases              Case[]
+antiNukeSettings   AntiNukeSettings?
+coOwners           AntiNukeCoOwner[]
 }
 
 model GuildSettings {
@@ -97,6 +110,41 @@ model Warning {
 
   @@index([guildId])
   @@index([userId])
+}
+
+model Case {
+  id            String             @id @default(cuid())
+
+  guildId       String
+  userId        String
+  moderatorId   String
+
+  action        ModerationAction
+  reason        String             @db.Text
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  guild         Guild              @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  user          User               @relation(
+    "CaseTarget",
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade,
+  )
+
+  moderator     User               @relation(
+    "CaseModerator",
+    fields: [moderatorId],
+    references: [id],
+    onDelete: Cascade,
+  )
+
+  @@index([guildId])
+  @@index([userId])
+  @@index([moderatorId])
+  @@index([action])
 }
 
 model AntiNukeSettings {

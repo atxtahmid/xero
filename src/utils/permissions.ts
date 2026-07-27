@@ -42,6 +42,19 @@ export async function hasPermission(
         }
         break;
 
+      case Permission.MODERATOR:
+        if (
+          member.permissions.has(
+            PermissionFlagsBits.Administrator,
+          ) ||
+          member.permissions.has(
+            PermissionFlagsBits.ModerateMembers,
+          )
+        ) {
+          return true;
+        }
+        break;
+
       case Permission.SERVER_OWNER:
         if (
           interaction.guild.ownerId ===

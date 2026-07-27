@@ -1,19 +1,29 @@
 import { Client } from "discord.js";
 
 import backupService from "./backupService.js";
+import logger from "./logger.js";
 
 class BackupScheduler {
   private interval: NodeJS.Timeout | null =
     null;
 
-  start(client: Client): void {
+  async start(
+    client: Client,
+  ): Promise<void> {
     if (this.interval) {
       return;
     }
 
+    logger.info(
+      "Starting automatic guild backup scheduler...",
+    );
+
     const run = async () => {
       for (const guild of client.guilds.cache.values()) {
         try {
+          await guild.channels.fetch();
+          await guild.roles.fetch();
+
           await backupService.createBackup(
             guild,
           );
@@ -22,23 +32,30 @@ class BackupScheduler {
             guild.id,
           );
 
-          console.log(
-            `[BACKUP] ${guild.name} backed up.`,
+          logger.info(
+            `Backup completed for ${guild.name}`,
           );
         } catch (error) {
-          console.error(
-            `[BACKUP] Failed for ${guild.name}`,
+          logger.error(
+            `Failed backing up ${guild.name}`,
             error,
           );
         }
       }
     };
 
-    run().catch(console.error);
+    await run();
+    
+    this.interval = setInterval(
+      async () => {
+        await run();
+      },
+      1000 * 60 * 30,
+    );
 
-    this.interval = setInterval(() => {
-      run().catch(console.error);
-    }, 15 * 60 * 1000);
+    logger.info(
+      "Automatic backups scheduled every 30 minutes.",
+    );
   }
 
   stop(): void {
@@ -46,9 +63,15 @@ class BackupScheduler {
       return;
     }
 
-    clearInterval(this.interval);
+    clearInterval(
+      this.interval,
+    );
 
     this.interval = null;
+
+    logger.info(
+      "Backup scheduler stopped.",
+    );
   }
 }
 

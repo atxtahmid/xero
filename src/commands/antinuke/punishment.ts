@@ -1,5 +1,6 @@
 import {
   ChatInputCommandInteraction,
+  PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
 
@@ -9,6 +10,7 @@ import {
   Permission,
   type Command,
 } from "../../types/Command.js";
+
 import antiNukeSettingsService from "../../services/antiNukeSettingsService.js";
 
 const command: Command = {
@@ -22,28 +24,39 @@ const command: Command = {
 
   data: new SlashCommandBuilder()
     .setName("antinuke-punishment")
-    .setDescription("Set the Anti-Nuke punishment.")
+    .setDescription(
+      "Set the Anti-Nuke punishment.",
+    )
+    .setDefaultMemberPermissions(
+      PermissionFlagsBits.Administrator,
+    )
     .addStringOption((option) =>
       option
         .setName("punishment")
-        .setDescription("Punishment to apply")
+        .setDescription(
+          "Punishment to apply",
+        )
         .setRequired(true)
         .addChoices(
           {
             name: "Remove Roles",
-            value: PunishmentType.REMOVE_ROLES,
+            value:
+              PunishmentType.REMOVE_ROLES,
           },
           {
             name: "Timeout",
-            value: PunishmentType.TIMEOUT,
+            value:
+              PunishmentType.TIMEOUT,
           },
           {
             name: "Kick",
-            value: PunishmentType.KICK,
+            value:
+              PunishmentType.KICK,
           },
           {
             name: "Ban",
-            value: PunishmentType.BAN,
+            value:
+              PunishmentType.BAN,
           },
         ),
     ),
@@ -73,7 +86,8 @@ const command: Command = {
     );
 
     await interaction.reply({
-      content: `✅ Anti-Nuke punishment updated to **${punishment}**.`,
+      content:
+        `✅ Anti-Nuke punishment updated to **${punishment}**.`,
       ephemeral: true,
     });
   },

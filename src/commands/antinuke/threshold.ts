@@ -36,18 +36,28 @@ const command: Command = {
 
   data: new SlashCommandBuilder()
     .setName("antinuke-threshold")
-    .setDescription("Configure Anti-Nuke thresholds.")
-
+    .setDescription(
+      "Configure Anti-Nuke thresholds.",
+    )
     .addStringOption((option) =>
       option
         .setName("action")
         .setDescription("Action")
         .setRequired(true)
         .addChoices(
-          { name: "Bot Add", value: "bot_add" },
+          {
+            name: "Bot Add",
+            value: "bot_add",
+          },
 
-          { name: "Mass Ban", value: "mass_ban" },
-          { name: "Mass Kick", value: "mass_kick" },
+          {
+            name: "Mass Ban",
+            value: "mass_ban",
+          },
+          {
+            name: "Mass Kick",
+            value: "mass_kick",
+          },
 
           {
             name: "Channel Delete",
@@ -86,16 +96,16 @@ const command: Command = {
           },
         ),
     )
-
     .addIntegerOption((option) =>
       option
         .setName("value")
-        .setDescription("Threshold (1-20)")
+        .setDescription(
+          "Threshold (1-20)",
+        )
         .setRequired(true)
         .setMinValue(1)
         .setMaxValue(20),
     )
-
     .setDefaultMemberPermissions(
       PermissionFlagsBits.Administrator,
     ),
@@ -134,7 +144,18 @@ const command: Command = {
         true,
       );
 
-    const field = actionMap[action];
+    const field =
+      actionMap[action];
+
+    if (!field) {
+      await interaction.reply({
+        content:
+          "❌ Invalid Anti-Nuke action.",
+        ephemeral: true,
+      });
+
+      return;
+    }
 
     await antiNukeSettingsService.setThreshold(
       interaction.guild.id,
@@ -143,7 +164,8 @@ const command: Command = {
     );
 
     await interaction.reply({
-      content: `✅ Updated **${action.replaceAll("_", " ")}** threshold to **${value}**.`,
+      content:
+        `✅ Updated **${action.replaceAll("_", " ")}** threshold to **${value}**.`,
       ephemeral: true,
     });
   },

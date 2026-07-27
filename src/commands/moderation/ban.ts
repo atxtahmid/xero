@@ -1,0 +1,203 @@
+import {
+  ModerationAction,
+} from "@prisma/client";
+
+import {
+  ChatInputCommandInteraction,
+  PermissionFlagsBits,
+  SlashCommandBuilder,
+} from "discord.js";
+
+import {
+  createCase,
+} from "../../services/caseService.js";
+
+import {
+  sendModLog,
+} from "../../services/modLogService.js";
+
+import {
+  createSuccessEmbed,
+  sendModerationDM,
+} from "../../services/moderationService.js";
+
+import {
+  Permission,
+  type Command,
+} from "../../types/Command.js";
+
+import {
+  canModerate,
+  fetchMember,
+} from "../../utils/moderation.js";
+
+const command: Command = {
+  permissions: [
+    Permission.MODERATOR,
+  ],
+
+  guildOnly: true,
+
+  cooldown: 5,
+
+  data: new SlashCommandBuilder()
+    .setName("ban")
+    .setDescription(
+      "Ban a member from the server.",
+    )
+    .setDefaultMemberPermissions(
+      PermissionFlagsBits.BanMembers,
+    )
+    .addUserOption((option) =>
+      option
+        .setName("user")
+        .setDescription(
+          "Member to ban.",
+        )
+        .setRequired(true),
+    )
+    .addStringOption((option) =>
+      option
+        .setName("reason")
+        .setDescription(
+          "Reason for the ban.",
+        )
+        .setRequired(false),
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("delete-history")
+        .setDescription(
+          "Delete message history (0-7 days).",
+        )
+        .setMinValue(0)
+        .setMaxValue(7)
+        .setRequired(false),
+    ),
+
+  async execute(
+    interaction: ChatInputCommandInteraction,
+  ) {
+    if (!interaction.guild) {
+      await interaction.reply({
+        content:
+          "❌ This command can only be used in a server.",
+        ephemeral: true,
+      });
+
+      return;
+    }
+
+    const member =
+      await fetchMember(
+        interaction,
+        interaction.options.getUser(
+          "user",
+          true,
+        ).id,
+      );
+
+    if (!member) {
+      await interaction.reply({
+        content:
+          "❌ Member not found.",
+        ephemeral: true,
+      });
+
+      return;
+    }
+
+    const check =
+      canModerate(
+        interaction,
+        member,
+      );
+
+    if (!check.success) {
+      await interaction.reply({
+        content: check.message!,
+        ephemeral: true,
+      });
+
+      return;
+    }
+
+    if (!member.bannable) {
+      await interaction.reply({
+        content:
+          "❌ I can't ban that member.",
+        ephemeral: true,
+      });
+
+      return;
+    }
+
+    const reason =
+      interaction.options.getString(
+        "reason",
+      ) ?? "No reason provided.";
+
+    const deleteHistory =
+      interaction.options.getInteger(
+        "delete-history",
+      ) ?? 0;
+
+    await sendModerationDM({
+      action: "Ban",
+      guild: interaction.guild,
+      moderator: interaction.user,
+      member,
+      reason,
+    });
+
+    await member.ban({
+      reason,
+      deleteMessageSeconds:
+        deleteHistory *
+        24 *
+        60 *
+        60,
+    });
+
+    const modCase =
+      await createCase({
+        guildId:
+          interaction.guild.id,
+        userId:
+          member.id,
+        moderatorId:
+          interaction.user.id,
+        action:
+          ModerationAction.BAN,
+        reason,
+      });
+      await sendModLog({
+        guild: 
+          interaction.guild,
+        moderator: 
+          interaction.user,
+        target: 
+          member.user,
+        action: 
+          "Ban",
+        reason,
+        caseId: 
+          modCase.id,
+      });
+    await interaction.reply({
+      embeds: [
+        createSuccessEmbed(
+          "Member Banned",
+          [
+            `**User:** ${member.user.tag}`,
+            `**Reason:** ${reason}`,
+            `**Deleted History:** ${deleteHistory} day(s)`,
+            `**Case ID:** ${modCase.id}`,
+          ].join("\n"),
+        ),
+      ],
+    });
+  },
+};
+
+export default command;
