@@ -56,7 +56,7 @@ const command: Command = {
 
     const clone =
       await oldChannel.clone({
-        name: oldChannel.name,
+        name: `${oldChannel.name}-copy`,
         reason: `Channel cloned by ${interaction.user.tag}`,
       });
 
@@ -68,24 +68,21 @@ const command: Command = {
     );
 
     await clone.setPosition(
-      oldChannel.position,
-    );
-
-    await oldChannel.delete(
-      `Channel cloned by ${interaction.user.tag}`,
+      oldChannel.position + 1,
     );
 
     await clone.send({
       content: [
         "🧬 **Channel cloned successfully.**",
         "",
+        `Original: ${oldChannel}`,
         `Cloned by: ${interaction.user}`,
       ].join("\n"),
     });
 
     await interaction.followUp({
       content:
-        `✅ ${clone} has replaced the original channel.`,
+        `✅ Created a clone: ${clone}`,
       ephemeral: true,
     });
   },
