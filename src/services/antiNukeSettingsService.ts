@@ -3,10 +3,30 @@ import { PunishmentType } from "@prisma/client";
 import db from "./database.js";
 
 class AntiNukeSettingsService {
+  private async ensureGuild(
+    guildId: string,
+  ): Promise<void> {
+    await db.guild.upsert({
+      where: {
+        id: guildId,
+      },
+      update: {},
+      create: {
+        id: guildId,
+      },
+    });
+  }
+
   async enable(guildId: string) {
+    await this.ensureGuild(guildId);
+
     return db.antiNukeSettings.upsert({
-      where: { guildId },
-      update: { enabled: true },
+      where: {
+        guildId,
+      },
+      update: {
+        enabled: true,
+      },
       create: {
         guildId,
         enabled: true,
@@ -15,9 +35,15 @@ class AntiNukeSettingsService {
   }
 
   async disable(guildId: string) {
+    await this.ensureGuild(guildId);
+
     return db.antiNukeSettings.upsert({
-      where: { guildId },
-      update: { enabled: false },
+      where: {
+        guildId,
+      },
+      update: {
+        enabled: false,
+      },
       create: {
         guildId,
         enabled: false,
@@ -27,7 +53,9 @@ class AntiNukeSettingsService {
 
   async get(guildId: string) {
     return db.antiNukeSettings.findUnique({
-      where: { guildId },
+      where: {
+        guildId,
+      },
     });
   }
 
@@ -36,8 +64,12 @@ class AntiNukeSettingsService {
     field: string,
     value: number,
   ) {
+    await this.ensureGuild(guildId);
+
     return db.antiNukeSettings.upsert({
-      where: { guildId },
+      where: {
+        guildId,
+      },
       update: {
         [field]: value,
       },
@@ -53,8 +85,12 @@ class AntiNukeSettingsService {
     guildId: string,
     punishment: PunishmentType,
   ) {
+    await this.ensureGuild(guildId);
+
     return db.antiNukeSettings.upsert({
-      where: { guildId },
+      where: {
+        guildId,
+      },
       update: {
         punishment,
       },
