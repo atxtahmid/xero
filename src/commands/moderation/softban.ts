@@ -27,6 +27,10 @@ import {
   sendModerationDM,
 } from "../../services/moderationService.js";
 
+import {
+  sendModLog,
+} from "../../services/modLogService.js";
+
 const command: Command = {
   permissions: [
     Permission.MODERATOR,
@@ -161,28 +165,37 @@ const command: Command = {
     );
 
     const modCase =
-      await createCase({
-        guildId:
-          interaction.guild.id,
-        userId:
-          member.id,
-        moderatorId:
-          interaction.user.id,
-        action:
-          ModerationAction.SOFT_BAN,
-        reason,
-      });
+    await createCase({
+      guildId:
+      interaction.guild.id,
+      userId:
+      member.id,
+      moderatorId:
+      interaction.user.id,
+      action:
+      ModerationAction.SOFT_BAN,
+      reason,
+    });
+
+    await sendModLog({
+      guild: interaction.guild,
+      moderator: interaction.user,
+      target: member.user,
+      action: "Soft Ban",
+      reason,
+      caseId: modCase.id,
+    });
 
     await interaction.reply({
       embeds: [
         createSuccessEmbed(
           "Member Soft Banned",
           [
-            `**User:** ${member.user.tag}`,
-            `**Reason:** ${reason}`,
-            `**Deleted History:** ${deleteHistory} day(s)`,
-            `**Case ID:** ${modCase.id}`,
-          ].join("\n"),
+          `**User:** ${member.user.tag}`,
+          `**Reason:** ${reason}`,
+          `**Deleted History:** ${deleteHistory} day(s)`,
+          `**Case ID:** ${modCase.id}`,
+        ].join("\n"),
         ),
       ],
     });

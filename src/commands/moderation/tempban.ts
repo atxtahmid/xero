@@ -27,6 +27,10 @@ import {
   sendModerationDM,
 } from "../../services/moderationService.js";
 
+import {
+  sendModLog,
+} from "../../services/modLogService.js";
+
 const command: Command = {
   permissions: [
     Permission.MODERATOR,
@@ -185,6 +189,14 @@ const command: Command = {
         reason,
       });
 
+      await sendModLog({
+        guild: interaction.guild,
+        moderator: interaction.user,
+        target: member.user,
+        action: "Temp Ban",
+        reason,
+        caseId: modCase.id,
+      });
     // TODO:
     // Store the tempban in the database and let the
     // scheduled unban service remove it automatically
