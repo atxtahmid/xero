@@ -1,9 +1,6 @@
 export function isGlobalOwner(userId: string): boolean {
-  const globalOwnerId = process.env.BOT_OWNER_ID;
+  console.log("BOT_OWNER_ID:", process.env.BOT_OWNER_ID);
+  console.log("USER_ID:", userId);
 
-  if (!globalOwnerId) {
-    return false;
-  }
-
-  return userId === globalOwnerId;
+  return userId === process.env.BOT_OWNER_ID;
 }
