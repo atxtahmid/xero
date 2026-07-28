@@ -1,6 +1,5 @@
 import {
   ChatInputCommandInteraction,
-  GuildMember,
   PermissionFlagsBits,
 } from "discord.js";
 
@@ -20,16 +19,22 @@ export async function hasPermission(
     return true;
   }
 
-  // No permission required
+  // Commands with no required permission
   if (permissions.length === 0) {
     return true;
   }
 
-  // Guild commands require a guild
+  // USER commands are available to everyone
   if (
-    !interaction.guild ||
-    !interaction.member
+    permissions.includes(
+      Permission.USER,
+    )
   ) {
+    return true;
+  }
+
+  // The remaining permissions require a guild
+  if (!interaction.guild) {
     return false;
   }
 
@@ -41,19 +46,20 @@ export async function hasPermission(
     return true;
   }
 
-  const member =
-    interaction.member as GuildMember;
+  const memberPermissions =
+    interaction.memberPermissions;
+
+  if (!memberPermissions) {
+    return false;
+  }
 
   for (
     const permission of permissions
   ) {
     switch (permission) {
-      case Permission.USER:
-        return true;
-
       case Permission.ADMIN:
         if (
-          member.permissions.has(
+          memberPermissions.has(
             PermissionFlagsBits.Administrator,
           )
         ) {
@@ -64,10 +70,10 @@ export async function hasPermission(
 
       case Permission.MODERATOR:
         if (
-          member.permissions.has(
+          memberPermissions.has(
             PermissionFlagsBits.Administrator,
           ) ||
-          member.permissions.has(
+          memberPermissions.has(
             PermissionFlagsBits.ModerateMembers,
           )
         ) {
