@@ -19,23 +19,23 @@ const command: Command = {
 
   data: new SlashCommandBuilder()
     .setName("ping")
-    .setDescription("Check the bot's latency."),
+    .setDescription(
+      "Check the bot's latency.",
+    ),
 
   async execute(
     interaction: ChatInputCommandInteraction,
-  ) {
-    const sent = await interaction.reply({
-      content: "🏓 Pinging...",
-      fetchReply: true,
-    });
+  ): Promise<void> {
+    const startTime = Date.now();
+
+    await interaction.deferReply();
+
+    const botLatency =
+      Date.now() - startTime;
 
     const apiLatency = Math.round(
       interaction.client.ws.ping,
     );
-
-    const botLatency =
-      sent.createdTimestamp -
-      interaction.createdTimestamp;
 
     await interaction.editReply({
       content: [
