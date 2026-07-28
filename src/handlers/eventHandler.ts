@@ -1,35 +1,61 @@
 import { Client } from "discord.js";
 import { readdirSync } from "node:fs";
-import { dirname, extname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  dirname,
+  extname,
+  join,
+} from "node:path";
+import {
+  fileURLToPath,
+  pathToFileURL,
+} from "node:url";
 
 import logger from "../services/logger.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __filename =
+  fileURLToPath(import.meta.url);
+
+const __dirname =
+  dirname(__filename);
 
 interface Event {
   name: string;
+
   once?: boolean;
-  execute: (...args: unknown[]) => Promise<void> | void;
+
+  execute: (
+    ...args: unknown[]
+  ) => Promise<void> | void;
 }
 
-function getEventFiles(directory: string): string[] {
+function getEventFiles(
+  directory: string,
+): string[] {
   const files: string[] = [];
 
-  const entries = readdirSync(directory, {
-    withFileTypes: true,
-  });
+  const entries = readdirSync(
+    directory,
+    {
+      withFileTypes: true,
+    },
+  );
 
   for (const entry of entries) {
-    const fullPath = join(directory, entry.name);
+    const fullPath = join(
+      directory,
+      entry.name,
+    );
 
     if (entry.isDirectory()) {
-      files.push(...getEventFiles(fullPath));
+      files.push(
+        ...getEventFiles(fullPath),
+      );
+
       continue;
     }
 
-    const extension = extname(entry.name);
+    const extension =
+      extname(entry.name);
 
     if (
       extension === ".ts" ||
@@ -45,35 +71,66 @@ function getEventFiles(directory: string): string[] {
 export async function loadEvents(
   client: Client,
 ): Promise<void> {
-  const eventsPath = join(__dirname, "..", "events");
+  const eventsPath = join(
+    __dirname,
+    "..",
+    "events",
+  );
 
   let loaded = 0;
 
-  const eventFiles = getEventFiles(eventsPath);
+  const eventFiles =
+    getEventFiles(eventsPath);
 
-  for (const filePath of eventFiles) {
+  for (
+    const filePath of eventFiles
+  ) {
     try {
       const module = await import(
-        pathToFileURL(filePath).href
+        pathToFileURL(
+          filePath,
+        ).href,
       );
 
-      const event: Event | undefined =
-        module.default ?? module.event;
+      const event:
+        | Event
+        | undefined =
+        module.default ??
+        module.event;
 
-      if (!event?.name || !event?.execute) {
+      if (
+        !event?.name ||
+        !event?.execute
+      ) {
         logger.warn(
           `Skipping invalid event: ${filePath}`,
         );
+
         continue;
       }
 
+      const runEvent = (
+        ...args: unknown[]
+      ) => {
+        Promise.resolve(
+          event.execute(...args),
+        ).catch((error) => {
+          logger.error(
+            `Error in event: ${event.name}`,
+            error,
+          );
+        });
+      };
+
       if (event.once) {
-        client.once(event.name, (...args) =>
-          void event.execute(...args),
+        client.once(
+          event.name,
+          runEvent,
         );
       } else {
-        client.on(event.name, (...args) =>
-          void event.execute(...args),
+        client.on(
+          event.name,
+          runEvent,
         );
       }
 
