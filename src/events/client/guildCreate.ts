@@ -1,15 +1,24 @@
 import {
+  Client,
   Events,
   Guild,
 } from "discord.js";
 
-import db from "../services/database.js";
-import logger from "../services/logger.js";
+import db from "../../services/database.js";
+import logger from "../../services/logger.js";
 
-const event = {
+import type {
+  Event,
+} from "../../types/Event.js";
+
+const event: Event<
+  typeof Events.GuildCreate
+> = {
   name: Events.GuildCreate,
 
-  async execute(guild: Guild) {
+  async execute(
+    guild: Guild,
+  ) {
     try {
       await db.guild.upsert({
         where: {
@@ -26,7 +35,7 @@ const event = {
       );
     } catch (error) {
       logger.error(
-        "Failed to register guild:",
+        `Failed to register guild: ${guild.name} (${guild.id})`,
         error,
       );
     }

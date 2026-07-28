@@ -11,23 +11,42 @@ export async function hasPermission(
   interaction: ChatInputCommandInteraction,
   permissions: Permission[] = [],
 ): Promise<boolean> {
-  // Global Owner bypass
-  if (isGlobalOwner(interaction.user.id)) {
+  // Global owner bypass
+  if (
+    isGlobalOwner(
+      interaction.user.id,
+    )
+  ) {
     return true;
   }
 
+  // No permission required
   if (permissions.length === 0) {
     return true;
   }
 
-  if (!interaction.guild || !interaction.member) {
+  // Guild commands require a guild
+  if (
+    !interaction.guild ||
+    !interaction.member
+  ) {
     return false;
+  }
+
+  // Server owner bypass
+  if (
+    interaction.guild.ownerId ===
+    interaction.user.id
+  ) {
+    return true;
   }
 
   const member =
     interaction.member as GuildMember;
 
-  for (const permission of permissions) {
+  for (
+    const permission of permissions
+  ) {
     switch (permission) {
       case Permission.USER:
         return true;
@@ -40,6 +59,7 @@ export async function hasPermission(
         ) {
           return true;
         }
+
         break;
 
       case Permission.MODERATOR:
@@ -53,6 +73,7 @@ export async function hasPermission(
         ) {
           return true;
         }
+
         break;
 
       case Permission.SERVER_OWNER:
@@ -62,6 +83,7 @@ export async function hasPermission(
         ) {
           return true;
         }
+
         break;
 
       default:
