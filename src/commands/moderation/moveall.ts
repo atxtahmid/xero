@@ -58,6 +58,18 @@ const command: Command = {
   async execute(
     interaction: ChatInputCommandInteraction,
   ) {
+    if (!interaction.guild) {
+      await interaction.reply({
+        content:
+          "❌ This command can only be used in a server.",
+        ephemeral: true,
+      });
+
+      return;
+    }
+
+    await interaction.guild.members.fetch();
+
     const from =
       interaction.options.getChannel(
         "from",
@@ -70,20 +82,37 @@ const command: Command = {
         true,
       ) as VoiceBasedChannel;
 
-    const members = [
-      ...from.members.values(),
-    ];
+    if (from.id === to.id) {
+      await interaction.reply({
+        content:
+          "❌ Source and destination channels must be different.",
+        ephemeral: true,
+      });
+
+      return;
+    }
+
+    const members = [...from.members.values()];
+
+    if (members.length === 0) {
+      await interaction.reply({
+        content:
+          "❌ The source voice channel has no members.",
+        ephemeral: true,
+      });
+
+      return;
+    }
 
     let moved = 0;
 
     for (const member of members) {
       try {
-        await member.voice.setChannel(
-          to,
-        );
-
+        await member.voice.setChannel(to);
         moved++;
-      } catch {}
+      } catch {
+        // Ignore members that cannot be moved.
+      }
     }
 
     await interaction.reply({
