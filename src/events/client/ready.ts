@@ -1,4 +1,7 @@
-import { Client, Events } from "discord.js";
+import {
+  Client,
+  Events,
+} from "discord.js";
 
 import config from "../../config/index.js";
 import logger from "../../services/logger.js";
@@ -16,6 +19,20 @@ const event: Event<typeof Events.ClientReady> = {
   ) {
     logger.info(
       `Logged in as ${client.user.tag}`,
+    );
+
+    logger.info(
+      `Bot User ID: ${client.user.id}`,
+    );
+
+    await client.application.fetch();
+
+    logger.info(
+      `Application ID: ${client.application.id}`,
+    );
+
+    logger.info(
+      `Configured CLIENT_ID: ${config.discord.clientId}`,
     );
 
     logger.info(
