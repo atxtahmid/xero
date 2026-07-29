@@ -68,8 +68,6 @@ const command: Command = {
       return;
     }
 
-    await interaction.guild.members.fetch();
-
     const from =
       interaction.options.getChannel(
         "from",
