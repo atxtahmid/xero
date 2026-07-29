@@ -17,7 +17,10 @@ declare module "discord.js" {
 }
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
+  ],
 });
 
 client.commands = new Collection<string, Command>();
@@ -26,6 +29,9 @@ await loadCommands(client);
 await loadEvents(client);
 
 client.login(config.discord.token).catch((error) => {
-  logger.error(`Failed to login: ${error}`);
+  logger.error(
+    `Failed to login: ${error}`,
+  );
+
   process.exit(1);
 });
