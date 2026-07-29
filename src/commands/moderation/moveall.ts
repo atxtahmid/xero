@@ -6,6 +6,8 @@ import {
   VoiceBasedChannel,
 } from "discord.js";
 
+import logger from "../../services/logger.js";
+
 import {
   Permission,
   type Command,
@@ -90,7 +92,13 @@ const command: Command = {
       return;
     }
 
-    const members = [...from.members.values()];
+    const members = [
+      ...from.members.values(),
+    ];
+
+    logger.info(
+      `[MOVEALL] Source=${from.name} Members=${members.length}`,
+    );
 
     if (members.length === 0) {
       await interaction.reply({
@@ -105,13 +113,31 @@ const command: Command = {
     let moved = 0;
 
     for (const member of members) {
+      logger.info(
+        `[MOVEALL] Attempting ${member.user.tag} (${member.id})`,
+      );
+
       try {
-        await member.voice.setChannel(to);
+        await member.voice.setChannel(
+          to,
+        );
+
         moved++;
-      } catch {
-        // Ignore members that cannot be moved.
+
+        logger.info(
+          `[MOVEALL] Success ${member.user.tag}`,
+        );
+      } catch (error) {
+        logger.error(
+          `[MOVEALL] Failed ${member.user.tag}`,
+          error,
+        );
       }
     }
+
+    logger.info(
+      `[MOVEALL] Finished. Moved=${moved}/${members.length}`,
+    );
 
     await interaction.reply({
       content: `✅ Moved **${moved}** member(s) to ${to}.`,
