@@ -22,20 +22,6 @@ const event: Event<typeof Events.ClientReady> = {
     );
 
     logger.info(
-      `Bot User ID: ${client.user.id}`,
-    );
-
-    await client.application.fetch();
-
-    logger.info(
-      `Application ID: ${client.application.id}`,
-    );
-
-    logger.info(
-      `Configured CLIENT_ID: ${config.discord.clientId}`,
-    );
-
-    logger.info(
       `Serving ${client.guilds.cache.size} guild(s).`,
     );
 
