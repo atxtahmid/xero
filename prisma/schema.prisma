@@ -26,39 +26,42 @@ enum ModerationAction {
 
 enum TicketStatus {
   OPEN
+  LOCKED
   CLOSED
+  DELETED
 }
 
 enum TicketCategoryType {
   GENERAL
-  SUPPORT
-  REPORT
-  APPEAL
-  OTHER
 }
 
 model User {
-  id           String        @id
+  id           String   @id
   username     String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   chatHistory      ChatHistory[]
   warnings         Warning[]
+
   cases            Case[] @relation("CaseTarget")
   moderatedCases   Case[] @relation("CaseModerator")
+
+  createdTickets   Ticket[] @relation("TicketCreator")
+  claimedTickets   Ticket[] @relation("TicketClaimer")
 }
 
 model Guild {
-  id                 String               @id
-  prefix             String               @default("!")
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  id         String   @id
+  prefix     String   @default("!")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   settings           GuildSettings?
   chatHistory        ChatHistory[]
   warnings           Warning[]
   cases              Case[]
+
   antiNukeSettings   AntiNukeSettings?
   coOwners           AntiNukeCoOwner[]
 
@@ -67,85 +70,124 @@ model Guild {
 }
 
 model GuildSettings {
-  id                 String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  guildId            String   @unique
-  guild              Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guildId String @unique
 
-  language           String   @default("en")
-  aiEnabled          Boolean  @default(true)
-  aiModel            String   @default("gemini-2.5-flash")
+  guild Guild @relation(
+    fields: [guildId],
+    references: [id],
+    onDelete: Cascade
+  )
 
-  logChannelId            String?
-  antiNukeLogChannelId    String?
-  welcomeChannelId        String?
-  welcomeMessage          String?
-  leaveMessage            String?
+  language String @default("en")
 
-  autoRoleId         String?
-  modRoleId          String?
-  adminRoleId        String?
+  aiEnabled Boolean @default(true)
+  aiModel String @default("gemini-2.5-flash")
 
-  searchEnabled      Boolean  @default(true)
+  logChannelId String?
+  antiNukeLogChannelId String?
 
-  createdAt          DateTime @default(now())
-  updatedAt          @updatedAt DateTime
+  welcomeChannelId String?
+  welcomeMessage String?
+  leaveMessage String?
+
+  autoRoleId String?
+  modRoleId String?
+  adminRoleId String?
+
+  searchEnabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ChatHistory {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  userId      String
-  guildId     String
+  userId  String
+  guildId String
 
-  role        String
-  content     String   @db.Text
+  role    String
+  content String @db.Text
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  guild        Guild   @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  guild Guild @relation(
+    fields: [guildId],
+    references: [id],
+    onDelete: Cascade
+  )
 
   @@index([userId])
   @@index([guildId])
 }
 
 model Warning {
-  id            String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  guildId       String
-  userId        String
+  guildId String
+  userId  String
 
-  moderatorId   String
-  reason        String   @db.Text
+  moderatorId String
+  reason      String @db.Text
 
-  createdAt     DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  guild         Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guild Guild @relation(
+    fields: [guildId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  user User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
 
   @@index([guildId])
   @@index([userId])
 }
 
 model Case {
-  id            String             @id @default(cuid())
+  id String @id @default(cuid())
 
-  guildId       String
-  userId        String
-  moderatorId   String
+  guildId String
+  userId String
+  moderatorId String
 
-  action        ModerationAction
-  reason        String             @db.Text
+  action ModerationAction
+  reason String @db.Text
 
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  guild         Guild              @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guild Guild @relation(
+    fields: [guildId],
+    references: [id],
+    onDelete: Cascade
+  )
 
-  user          User               @relation("CaseTarget", fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(
+    "CaseTarget",
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
 
-  moderator     User               @relation("CaseModerator", fields: [moderatorId], references: [id], onDelete: Cascade)
+  moderator User @relation(
+    "CaseModerator",
+    fields: [moderatorId],
+    references: [id],
+    onDelete: Cascade
+  )
 
   @@index([guildId])
   @@index([userId])
@@ -153,196 +195,297 @@ model Case {
   @@index([action])
 }
 model AntiNukeSettings {
-  id                    String           @id @default(cuid())
+  id String @id @default(cuid())
 
-  guildId               String           @unique
-  guild                 Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guildId String @unique
 
-  enabled               Boolean          @default(true)
+  guild Guild @relation(
+    fields: [guildId],
+    references: [id],
+    onDelete: Cascade
+  )
 
-  antiMassBan           Boolean          @default(true)
-  antiMassKick          Boolean          @default(true)
+  enabled Boolean @default(true)
 
-  antiChannelDelete     Boolean          @default(true)
-  antiChannelCreate     Boolean          @default(true)
-  antiChannelUpdate     Boolean          @default(true)
+  antiMassBan  Boolean @default(true)
+  antiMassKick Boolean @default(true)
 
-  antiRoleDelete        Boolean          @default(true)
-  antiRoleCreate        Boolean          @default(true)
-  antiRoleUpdate        Boolean          @default(true)
+  antiChannelDelete Boolean @default(true)
+  antiChannelCreate Boolean @default(true)
+  antiChannelUpdate Boolean @default(true)
 
-  antiBotAdd            Boolean          @default(true)
-  antiWebhookCreate     Boolean          @default(true)
-  antiServerUpdate      Boolean          @default(true)
+  antiRoleDelete Boolean @default(true)
+  antiRoleCreate Boolean @default(true)
+  antiRoleUpdate Boolean @default(true)
 
-  botAddThreshold        Int @default(1)
+  antiBotAdd Boolean @default(true)
 
-  massBanThreshold       Int @default(2)
-  massKickThreshold      Int @default(2)
+  antiWebhookCreate Boolean @default(true)
+
+  antiServerUpdate Boolean @default(true)
+
+  botAddThreshold Int @default(1)
+
+  massBanThreshold  Int @default(2)
+  massKickThreshold Int @default(2)
 
   channelDeleteThreshold Int @default(3)
   channelCreateThreshold Int @default(5)
   channelUpdateThreshold Int @default(5)
 
-  roleDeleteThreshold    Int @default(2)
-  roleCreateThreshold    Int @default(5)
-  roleUpdateThreshold    Int @default(5)
+  roleDeleteThreshold Int @default(2)
+  roleCreateThreshold Int @default(5)
+  roleUpdateThreshold Int @default(5)
 
   webhookCreateThreshold Int @default(1)
 
-  serverUpdateThreshold  Int @default(1)
+  serverUpdateThreshold Int @default(1)
 
-  punishment            PunishmentType   @default(REMOVE_ROLES)
+  punishment PunishmentType @default(REMOVE_ROLES)
 
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AntiNukeCoOwner {
-  id         String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  guildId    String
-  userId     String
+  guildId String
+  userId String
 
-  guild      Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guild Guild @relation(
+    fields: [guildId],
+    references: [id],
+    onDelete: Cascade
+  )
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([guildId, userId])
   @@index([guildId])
 }
 
 model AntiNukeWhitelist {
-  id         String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  guildId    String
-  userId     String
+  guildId String
+  userId String
 
-  category   String
+  category String
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  @@unique([guildId, userId, category])
+  @@unique([
+    guildId,
+    userId,
+    category
+  ])
 
   @@index([guildId])
   @@index([userId])
 }
 
 model GuildBackup {
-  id        String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  guildId   String
+  guildId String
+
   createdAt DateTime @default(now())
 
-  roles     RoleBackup[]
-  channels  ChannelBackup[]
+  roles    RoleBackup[]
+  channels ChannelBackup[]
 
   @@index([guildId])
 }
 
 model RoleBackup {
-  id            String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  backupId      String
-  backup        GuildBackup @relation(fields: [backupId], references: [id], onDelete: Cascade)
+  backupId String
 
-  roleId        String
-  name          String
+  backup GuildBackup @relation(
+    fields: [backupId],
+    references: [id],
+    onDelete: Cascade
+  )
 
-  color         Int
-  permissions   String
+  roleId String
 
-  position      Int
-  hoist         Boolean
-  mentionable   Boolean
+  name String
 
-  createdAt     DateTime @default(now())
+  color Int
+
+  permissions String
+
+  position Int
+
+  hoist Boolean
+
+  mentionable Boolean
+
+  createdAt DateTime @default(now())
 
   @@index([backupId])
 }
 
 model ChannelBackup {
-  id            String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  backupId      String
-  backup        GuildBackup @relation(fields: [backupId], references: [id], onDelete: Cascade)
+  backupId String
 
-  channelId     String
-  parentId      String?
+  backup GuildBackup @relation(
+    fields: [backupId],
+    references: [id],
+    onDelete: Cascade
+  )
 
-  name          String
-  type          Int
+  channelId String
 
-  position      Int
-  topic         String?
-  nsfw          Boolean
+  parentId String?
 
-  overwrites    ChannelPermissionOverwrite[]
+  name String
 
-  createdAt     DateTime @default(now())
+  type Int
+
+  position Int
+
+  topic String?
+
+  nsfw Boolean
+
+  overwrites ChannelPermissionOverwrite[]
+
+  createdAt DateTime @default(now())
 
   @@index([backupId])
 }
 
 model ChannelPermissionOverwrite {
-  id         String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  channelId  String
+  channelId String
 
-  targetId   String
-  type       Int
+  targetId String
 
-  allow      String
-  deny       String
+  type Int
 
-  createdAt  DateTime @default(now())
+  allow String
 
-  channel    ChannelBackup @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  deny String
+
+  createdAt DateTime @default(now())
+
+  channel ChannelBackup @relation(
+    fields: [channelId],
+    references: [id],
+    onDelete: Cascade
+  )
 
   @@index([channelId])
 }
 model TicketPanel {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  guildId         String
-  guild           Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guildId String
 
-  channelId       String
-  messageId       String?
+  guild Guild @relation(
+    fields: [guildId],
+    references: [id],
+    onDelete: Cascade
+  )
 
-  supportRoleId   String?
+  channelId String
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  messageId String?
+
+  supportRoleId String?
+
+  categoryId String?
+
+  logChannelId String?
+
+  name String @default("Support")
+
+  description String?
+
+  color Int @default(5793266)
+
+  tickets Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([guildId, channelId])
+
   @@index([guildId])
 }
 
 model Ticket {
-  id              String             @id @default(cuid())
+  id String @id @default(cuid())
 
-  guildId         String
-  guild           Guild              @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guildId String
 
-  channelId       String             @unique
+  guild Guild @relation(
+    fields: [guildId],
+    references: [id],
+    onDelete: Cascade
+  )
 
-  creatorId       String
+  panelId String
 
-  claimedById     String?
+  panel TicketPanel @relation(
+    fields: [panelId],
+    references: [id],
+    onDelete: Cascade
+  )
 
-  category        TicketCategoryType @default(GENERAL)
+  channelId String @unique
 
-  status          TicketStatus       @default(OPEN)
+  creatorId String
 
-  closed          Boolean            @default(false)
+  creator User @relation(
+    "TicketCreator",
+    fields: [creatorId],
+    references: [id],
+    onDelete: Cascade
+  )
 
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  claimedById String?
 
-  closedAt        DateTime?
+  claimedBy User? @relation(
+    "TicketClaimer",
+    fields: [claimedById],
+    references: [id],
+    onDelete: SetNull
+  )
+
+  category TicketCategoryType
+    @default(GENERAL)
+
+  status TicketStatus
+    @default(OPEN)
+
+  transcriptUrl String?
+
+  createdAt DateTime
+    @default(now())
+
+  updatedAt DateTime
+    @updatedAt
+
+  closedAt DateTime?
 
   @@index([guildId])
+
+  @@index([panelId])
+
   @@index([creatorId])
+
+  @@index([claimedById])
+
   @@index([status])
+
+  @@index([category])
+
+  @@index([createdAt])
 }
