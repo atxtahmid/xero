@@ -12,9 +12,19 @@ const envSchema = z.object({
   TAVILY_API_KEY: z.string().optional(),
 
   OWNER_ID: z.string().min(1),
+
+  NODE_ENV: z
+    .enum([
+      "development",
+      "production",
+      "test",
+    ])
+    .default("development"),
 });
 
-const env = envSchema.parse(process.env);
+const env = envSchema.parse(
+  process.env,
+);
 
 const config = {
   discord: {
@@ -31,8 +41,9 @@ const config = {
   },
 
   tavily: {
-  apiKey: env.TAVILY_API_KEY,
- },
+    apiKey:
+      env.TAVILY_API_KEY,
+  },
 
   owner: {
     id: env.OWNER_ID,
@@ -41,7 +52,17 @@ const config = {
   app: {
     name: "Xero",
     version: "1.0.0",
+    environment:
+      env.NODE_ENV,
   },
+
+  isDevelopment:
+    env.NODE_ENV ===
+    "development",
+
+  isProduction:
+    env.NODE_ENV ===
+    "production",
 };
 
 export default config;

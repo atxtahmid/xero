@@ -1,7 +1,4 @@
-import {
-  ModerationAction,
-} from "@prisma/client";
-
+import { ModerationAction } from "@prisma/client";
 import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
@@ -9,138 +6,81 @@ import {
 } from "discord.js";
 
 import db from "../../services/database.js";
-
-import {
-  createCase,
-} from "../../services/caseService.js";
-
-import {
-  sendModLog,
-} from "../../services/modLogService.js";
-
+import { createCase } from "../../services/caseService.js";
+import { sendModLog } from "../../services/modLogService.js";
 import {
   createSuccessEmbed,
   sendModerationDM,
 } from "../../services/moderationService.js";
-
-import {
-  Permission,
-  type Command,
-} from "../../types/Command.js";
-
-import {
-  canModerate,
-  fetchMember,
-} from "../../utils/moderation.js";
+import { Permission, type Command } from "../../types/Command.js";
+import { canModerate, fetchMember } from "../../utils/moderation.js";
 
 const command: Command = {
-  permissions: [
-    Permission.MODERATOR,
-  ],
-
+  permissions: [Permission.MODERATOR],
   guildOnly: true,
-
   cooldown: 5,
 
   data: new SlashCommandBuilder()
     .setName("warn")
     .setDescription("Warn a member.")
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.ModerateMembers,
-    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
     .addUserOption((option) =>
       option
         .setName("user")
         .setDescription("Member to warn.")
-        .setRequired(true),
+        .setRequired(true)
     )
     .addStringOption((option) =>
       option
         .setName("reason")
         .setDescription("Reason for the warning.")
-        .setRequired(true),
+        .setRequired(true)
+        .setMaxLength(500)
     ),
 
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ) {
-    if (!interaction.guild) {
-      await interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
-        ephemeral: true,
-      });
+  async execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.guild) return;
 
-      return;
-    }
+    await interaction.deferReply();
 
-    const member =
-      await fetchMember(
-        interaction,
-        interaction.options.getUser(
-          "user",
-          true,
-        ).id,
-      );
+    const targetUser = interaction.options.getUser("user", true);
+    const member = await fetchMember(interaction, targetUser.id);
 
     if (!member) {
-      await interaction.reply({
-        content:
-          "❌ Member not found.",
-        ephemeral: true,
-      });
-
+      await interaction.editReply({ content: "❌ That member is no longer in the server." });
       return;
     }
 
-    const check =
-      canModerate(
-        interaction,
-        member,
-      );
-
+    // 1. Hierarchy Validation (Critical for Staff protection)
+    const check = canModerate(interaction, member);
     if (!check.success) {
-      await interaction.reply({
-        content: check.message!,
-        ephemeral: true,
-      });
-
+      await interaction.editReply({ content: check.message! });
       return;
     }
 
-    const reason =
-      interaction.options.getString(
-        "reason",
-        true,
-      );
+    const reason = interaction.options.getString("reason", true);
 
-    const warning =
-      await db.warning.create({
-        data: {
-          guildId:
-            interaction.guild.id,
-          userId:
-            member.id,
-          moderatorId:
-            interaction.user.id,
-          reason,
-        },
-      });
+    // 2. Database Case Creation (formal record)
+    const modCase = await createCase({
+      guildId: interaction.guild.id,
+      userId: targetUser.id,
+      moderatorId: interaction.user.id,
+      action: ModerationAction.WARN,
+      reason,
+    });
 
-    const modCase =
-      await createCase({
-        guildId:
-          interaction.guild.id,
-        userId:
-          member.id,
-        moderatorId:
-          interaction.user.id,
-        action:
-          ModerationAction.WARN,
+    // 3. Warning Table Entry (used by /warnings history)
+    const warning = await db.warning.create({
+      data: {
+        guildId: interaction.guild.id,
+        userId: member.id,
+        moderatorId: interaction.user.id,
         reason,
-      });
+      },
+    });
 
-    await sendModerationDM({
+    // 4. DM the user
+    const dmSent = await sendModerationDM({
       action: "Warn",
       guild: interaction.guild,
       moderator: interaction.user,
@@ -149,25 +89,28 @@ const command: Command = {
       caseId: modCase.id,
     });
 
+    // 5. Send Log
     await sendModLog({
       guild: interaction.guild,
       moderator: interaction.user,
-      target: member.user,
+      target: targetUser,
       action: "Warn",
       reason,
       caseId: modCase.id,
     });
 
-    await interaction.reply({
+    // 6. Final Reply
+    const dmStatus = dmSent ? "" : "\n⚠️ *Note: Could not DM the user (DMs closed).*";
+    await interaction.editReply({
       embeds: [
         createSuccessEmbed(
           "Member Warned",
           [
-            `**User:** ${member.user.tag}`,
+            `**User:** ${targetUser.tag} (\`${targetUser.id}\`)`,
             `**Reason:** ${reason}`,
-            `**Warning ID:** ${warning.id}`,
             `**Case ID:** ${modCase.id}`,
-          ].join("\n"),
+            dmStatus,
+          ].join("\n")
         ),
       ],
     });

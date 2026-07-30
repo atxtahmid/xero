@@ -1,4 +1,5 @@
 import db from "./database.js";
+import logger from "./logger.js";
 
 class ChatHistoryService {
   private readonly maxMessages = 20;
@@ -6,43 +7,40 @@ class ChatHistoryService {
   async add(
     userId: string,
     guildId: string,
-    role: string,
+    role: "user" | "assistant",
     content: string,
   ) {
-    // Ensure the user exists
-    await db.user.upsert({
-      where: {
-        id: userId,
-      },
-      update: {},
-      create: {
-        id: userId,
-      },
-    });
+    try {
+      const message = await db.chatHistory.create({
+        data: {
+          role,
+          content,
+          // Use connectOrCreate to handle user/guild setup only when needed
+          user: {
+            connectOrCreate: {
+              where: { id: userId },
+              create: { id: userId },
+            },
+          },
+          guild: {
+            connectOrCreate: {
+              where: { id: guildId },
+              create: { id: guildId },
+            },
+          },
+        },
+      });
 
-    // Ensure the guild exists
-    await db.guild.upsert({
-      where: {
-        id: guildId,
-      },
-      update: {},
-      create: {
-        id: guildId,
-      },
-    });
+      // Fire and forget trimming to keep the interaction fast
+      void this.trimConversation(userId, guildId).catch((err) => 
+        logger.error(`[ChatHistory] Trim failed for ${userId}:`, err)
+      );
 
-    const message = await db.chatHistory.create({
-      data: {
-        userId,
-        guildId,
-        role,
-        content,
-      },
-    });
-
-    await this.trimConversation(userId, guildId);
-
-    return message;
+      return message;
+    } catch (error) {
+      logger.error(`[ChatHistory] Failed to add message for ${userId}:`, error);
+      throw error;
+    }
   }
 
   async getConversation(
@@ -78,32 +76,26 @@ class ChatHistoryService {
     userId: string,
     guildId: string,
   ): Promise<void> {
-    const messages = await db.chatHistory.findMany({
-      where: {
-        userId,
-        guildId,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
+    const count = await db.chatHistory.count({
+      where: { userId, guildId },
     });
 
-    if (messages.length <= this.maxMessages) {
-      return;
-    }
+    if (count <= this.maxMessages) return;
 
-    const excess = messages.slice(
-      0,
-      messages.length - this.maxMessages,
-    );
+    // Fetch only the IDs of the oldest messages to delete
+    const overflowCount = count - this.maxMessages;
+    const oldestMessages = await db.chatHistory.findMany({
+      where: { userId, guildId },
+      orderBy: { createdAt: "asc" },
+      take: overflowCount,
+      select: { id: true },
+    });
+
+    const idsToDelete = oldestMessages.map((m) => m.id);
 
     await db.chatHistory.deleteMany({
       where: {
-        id: {
-          in: excess.map(
-            (message: { id: string }) => message.id,
-          ),
-        },
+        id: { in: idsToDelete },
       },
     });
   }

@@ -1,29 +1,26 @@
-type Message = {
-  role: string;
-  content: string;
+import { GeminiContent } from "./aiContextService.js";
+
+export type AIRequestPayload = {
+  systemInstruction: string;
+  contents: GeminiContent[];
 };
 
 class PromptBuilder {
-  build(messages: Message[]) {
+  build(messages: GeminiContent[]): AIRequestPayload {
+    // Moved to a constant that can be expanded later via GuildSettings
     const systemPrompt = `
 You are Xero, an advanced Discord AI assistant.
-
 Rules:
-- Be helpful and accurate.
-- Keep responses concise unless asked otherwise.
-- Use Markdown when appropriate.
-- Never invent facts.
-- If unsure, say you don't know.
+- Be helpful, accurate, and concise.
+- Use Markdown (bold, lists, code blocks) for readability.
+- If you don't know a fact, say so. Do not invent information.
+- Maintain a professional yet friendly tone.
 `;
 
-    const conversation = messages
-      .map(
-        (message) =>
-          `${message.role.toUpperCase()}: ${message.content}`,
-      )
-      .join("\n");
-
-    return `${systemPrompt.trim()}\n\n${conversation}`;
+    return {
+      systemInstruction: systemPrompt.trim(),
+      contents: messages,
+    };
   }
 }
 

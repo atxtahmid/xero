@@ -1,108 +1,31 @@
-import {
-  ChatInputCommandInteraction,
-  SlashCommandBuilder,
-} from "discord.js";
-
+import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import antiNukeWhitelistService from "../../services/antiNukeWhitelistService.js";
-import {
-  Permission,
-  type Command,
-} from "../../types/Command.js";
+import { Permission, type Command } from "../../types/Command.js";
+import { isHighlyTrusted } from "../../utils/auth.js";
 
-const categories = [
-  "ALL",
-
-  "BAN",
-  "KICK",
-
-  "CHANNEL_CREATE",
-  "CHANNEL_DELETE",
-  "CHANNEL_UPDATE",
-
-  "ROLE_CREATE",
-  "ROLE_DELETE",
-  "ROLE_UPDATE",
-
-  "BOT_ADD",
-
-  "WEBHOOK_CREATE",
-
-  "SERVER_UPDATE",
-];
-
-const command: Command = {
-  permissions: [
-    Permission.ANTINUKE,
-  ],
-
-  guildOnly: true,
-
-  cooldown: 3,
-
+export default {
+  permissions: [Permission.SERVER_OWNER],
   data: new SlashCommandBuilder()
     .setName("whitelist-remove")
-    .setDescription(
-      "Remove a whitelist permission from a user.",
-    )
-    .addUserOption((option) =>
-      option
-        .setName("user")
-        .setDescription("User")
-        .setRequired(true),
-    )
-    .addStringOption((option) => {
-      option
-        .setName("category")
-        .setDescription("Category")
-        .setRequired(true);
+    .setDescription("Remove a whitelist entry (Owner/Co-Owner Only).")
+    .addUserOption(opt => opt.setName("user").setDescription("User").setRequired(true))
+    .addStringOption(opt => opt.setName("category").setDescription("Category").setRequired(true)),
 
-      for (const category of categories) {
-        option.addChoices({
-          name: category,
-          value: category,
-        });
-      }
+  async execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.guild) return;
 
-      return option;
-    }),
-
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ): Promise<void> {
-    if (!interaction.guild) {
-      await interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
-        ephemeral: true,
+    if (!(await isHighlyTrusted(interaction))) {
+      await interaction.reply({ 
+        content: "❌ Access Denied: This command is restricted to the **Server Owner** and **Co-Owners**.", 
+        ephemeral: true 
       });
-
       return;
     }
 
-    const user =
-      interaction.options.getUser(
-        "user",
-        true,
-      );
+    const user = interaction.options.getUser("user", true);
+    const category = interaction.options.getString("category", true);
 
-    const category =
-      interaction.options.getString(
-        "category",
-        true,
-      );
-
-    await antiNukeWhitelistService.remove(
-      interaction.guild.id,
-      user.id,
-      category,
-    );
-
-    await interaction.reply({
-      content:
-        `✅ Removed **${category}** from **${user.tag}**.`,
-      ephemeral: true,
-    });
+    await antiNukeWhitelistService.remove(interaction.guild.id, user.id, category);
+    await interaction.reply({ content: `✅ Removed \`${category}\` from **${user.tag}**.`, ephemeral: true });
   },
 };
-
-export default command;

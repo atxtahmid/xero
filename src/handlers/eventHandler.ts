@@ -11,22 +11,13 @@ import {
 } from "node:url";
 
 import logger from "../services/logger.js";
+import type { Event } from "../types/Event.js";
 
 const __filename =
   fileURLToPath(import.meta.url);
 
 const __dirname =
   dirname(__filename);
-
-interface Event {
-  name: string;
-
-  once?: boolean;
-
-  execute: (
-    ...args: unknown[]
-  ) => Promise<void> | void;
-}
 
 function getEventFiles(
   directory: string,
@@ -77,14 +68,12 @@ export async function loadEvents(
     "events",
   );
 
-  let loaded = 0;
-
   const eventFiles =
     getEventFiles(eventsPath);
 
-  for (
-    const filePath of eventFiles
-  ) {
+  let loaded = 0;
+
+  for (const filePath of eventFiles) {
     try {
       const module = await import(
         pathToFileURL(
@@ -109,35 +98,44 @@ export async function loadEvents(
         continue;
       }
 
-      const runEvent = (
-        ...args: unknown[]
-      ) => {
-        Promise.resolve(
-          event.execute(...args),
-        ).catch((error) => {
-          logger.error(
-            `Error in event: ${event.name}`,
-            error,
-          );
-        });
-      };
-
       if (event.once) {
         client.once(
           event.name,
-          runEvent,
+          (...args) =>
+            void Promise.resolve(
+              event.execute(...args),
+            ).catch((error) =>
+              logger.error(
+                `Error in event ${String(
+                  event.name,
+                )}`,
+                error,
+              ),
+            ),
         );
       } else {
         client.on(
           event.name,
-          runEvent,
+          (...args) =>
+            void Promise.resolve(
+              event.execute(...args),
+            ).catch((error) =>
+              logger.error(
+                `Error in event ${String(
+                  event.name,
+                )}`,
+                error,
+              ),
+            ),
         );
       }
 
       loaded++;
 
       logger.info(
-        `Loaded event: ${event.name}`,
+        `Loaded event: ${String(
+          event.name,
+        )}`,
       );
     } catch (error) {
       logger.error(

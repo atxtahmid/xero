@@ -1,204 +1,129 @@
-import {
-  ModerationAction,
-} from "@prisma/client";
-
+import { ModerationAction } from "@prisma/client";
 import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
 
-import {
-  createCase,
-} from "../../services/caseService.js";
-
-import {
-  Permission,
-  type Command,
-} from "../../types/Command.js";
-
-import {
-  canModerate,
-  fetchMember,
-} from "../../utils/moderation.js";
-
+import { createCase } from "../../services/caseService.js";
+import { sendModLog } from "../../services/modLogService.js";
 import {
   createSuccessEmbed,
   sendModerationDM,
 } from "../../services/moderationService.js";
-
-import {
-  sendModLog,
-} from "../../services/modLogService.js";
+import { Permission, type Command } from "../../types/Command.js";
+import { canModerate, fetchMember } from "../../utils/moderation.js";
 
 const command: Command = {
-  permissions: [
-    Permission.MODERATOR,
-  ],
-
+  permissions: [Permission.MODERATOR],
   guildOnly: true,
-
-  cooldown: 5,
+  cooldown: 10,
 
   data: new SlashCommandBuilder()
     .setName("softban")
-    .setDescription(
-      "Soft ban a member (ban then immediately unban).",
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.BanMembers,
-    )
+    .setDescription("Soft ban a member (Ban then immediately Unban to clear messages).")
+    .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
     .addUserOption((option) =>
       option
         .setName("user")
-        .setDescription(
-          "Member to soft ban.",
-        )
-        .setRequired(true),
+        .setDescription("Member to soft ban.")
+        .setRequired(true)
     )
     .addStringOption((option) =>
       option
         .setName("reason")
-        .setDescription(
-          "Reason for the soft ban.",
-        )
-        .setRequired(false),
+        .setDescription("Reason for the soft ban.")
+        .setRequired(false)
+        .setMaxLength(500)
     )
     .addIntegerOption((option) =>
       option
         .setName("delete-history")
-        .setDescription(
-          "Delete message history (0-7 days).",
-        )
-        .setRequired(false)
+        .setDescription("Delete message history (0-7 days). Default: 1 day.")
         .setMinValue(0)
-        .setMaxValue(7),
+        .setMaxValue(7)
+        .setRequired(false)
     ),
 
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ) {
-    if (!interaction.guild) {
-      await interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
-        ephemeral: true,
-      });
+  async execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.guild) return;
 
-      return;
+    await interaction.deferReply();
+
+    const targetUser = interaction.options.getUser("user", true);
+    const member = await fetchMember(interaction, targetUser.id);
+
+    if (member) {
+      const check = canModerate(interaction, member);
+      if (!check.success) {
+        await interaction.editReply({ content: check.message! });
+        return;
+      }
+      if (!member.bannable) {
+        return interaction.editReply({ content: "❌ I cannot ban this member." });
+      }
     }
 
-    const member =
-      await fetchMember(
-        interaction,
-        interaction.options.getUser(
-          "user",
-          true,
-        ).id,
-      );
+    const reason = interaction.options.getString("reason") ?? "No reason provided.";
+    const deleteDays = interaction.options.getInteger("delete-history") ?? 1;
+    const deleteSeconds = deleteDays * 24 * 60 * 60;
 
-    if (!member) {
-      await interaction.reply({
-        content:
-          "❌ Member not found.",
-        ephemeral: true,
+    try {
+      // 1. DM User
+      if (member) {
+        await sendModerationDM({
+          action: "Soft Ban",
+          guild: interaction.guild,
+          moderator: interaction.user,
+          member,
+          reason,
+        });
+      }
+
+      // 2. Ban with history deletion
+      await interaction.guild.bans.create(targetUser.id, {
+        reason: `Softban | ${interaction.user.tag}: ${reason}`,
+        deleteMessageSeconds: deleteSeconds,
       });
 
-      return;
-    }
+      // 3. Unban immediately
+      await interaction.guild.bans.remove(targetUser.id, "Softban completion.");
 
-    const check =
-      canModerate(
-        interaction,
-        member,
-      );
-
-    if (!check.success) {
-      await interaction.reply({
-        content: check.message!,
-        ephemeral: true,
+      // 4. Logs and Cases
+      const modCase = await createCase({
+        guildId: interaction.guild.id,
+        userId: targetUser.id,
+        moderatorId: interaction.user.id,
+        action: ModerationAction.SOFT_BAN,
+        reason,
       });
 
-      return;
-    }
-
-    if (!member.bannable) {
-      await interaction.reply({
-        content:
-          "❌ I can't soft ban that member.",
-        ephemeral: true,
+      await sendModLog({
+        guild: interaction.guild,
+        moderator: interaction.user,
+        target: targetUser,
+        action: "Soft Ban",
+        reason: `${reason} (${deleteDays} days history cleared)`,
+        caseId: modCase.id,
       });
 
-      return;
+      await interaction.editReply({
+        embeds: [
+          createSuccessEmbed(
+            "Member Soft Banned",
+            [
+              `**User:** ${targetUser.tag} (\`${targetUser.id}\`)`,
+              `**Reason:** ${reason}`,
+              `**History Cleared:** ${deleteDays} day(s)`,
+              `**Case ID:** ${modCase.id}`,
+            ].join("\n")
+          ),
+        ],
+      });
+    } catch (error) {
+      console.error("[Softban Command] Error:", error);
+      await interaction.editReply({ content: "❌ Failed to execute softban." });
     }
-
-    const reason =
-      interaction.options.getString(
-        "reason",
-      ) ?? "No reason provided.";
-
-    const deleteHistory =
-      interaction.options.getInteger(
-        "delete-history",
-      ) ?? 1;
-
-    await sendModerationDM({
-      action: "Soft Ban",
-      guild: interaction.guild,
-      moderator: interaction.user,
-      member,
-      reason,
-    });
-
-    await member.ban({
-      reason,
-      deleteMessageSeconds:
-        deleteHistory *
-        24 *
-        60 *
-        60,
-    });
-
-    await interaction.guild.members.unban(
-      member.id,
-      "Soft ban completed.",
-    );
-
-    const modCase =
-    await createCase({
-      guildId:
-      interaction.guild.id,
-      userId:
-      member.id,
-      moderatorId:
-      interaction.user.id,
-      action:
-      ModerationAction.SOFT_BAN,
-      reason,
-    });
-
-    await sendModLog({
-      guild: interaction.guild,
-      moderator: interaction.user,
-      target: member.user,
-      action: "Soft Ban",
-      reason,
-      caseId: modCase.id,
-    });
-
-    await interaction.reply({
-      embeds: [
-        createSuccessEmbed(
-          "Member Soft Banned",
-          [
-          `**User:** ${member.user.tag}`,
-          `**Reason:** ${reason}`,
-          `**Deleted History:** ${deleteHistory} day(s)`,
-          `**Case ID:** ${modCase.id}`,
-        ].join("\n"),
-        ),
-      ],
-    });
   },
 };
 

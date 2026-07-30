@@ -1,79 +1,43 @@
-import {
-  ChatInputCommandInteraction,
-  EmbedBuilder,
-  PermissionFlagsBits,
-  SlashCommandBuilder,
-} from "discord.js";
-
+import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from "discord.js";
 import db from "../../services/database.js";
+import { isHighlyTrusted } from "../../utils/auth.js";
+import { Permission } from "../../types/Command.js";
 
 export default {
+  permissions: [Permission.SERVER_OWNER],
   data: new SlashCommandBuilder()
     .setName("backup-list")
-    .setDescription(
-      "List available server backups.",
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.Administrator,
-    ),
+    .setDescription("List server backups (Owner/Co-Owner Only)."),
 
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ) {
-    if (!interaction.guild) {
-      return interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
-        ephemeral: true,
+  async execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.guild) return;
+
+    if (!(await isHighlyTrusted(interaction))) {
+      await interaction.reply({ 
+        content: "❌ Access Denied: Only the **Server Owner** or **Co-Owners** can manage server snapshots.", 
+        ephemeral: true 
       });
+      return;
     }
 
-    const backups =
-      await db.guildBackup.findMany({
-        where: {
-          guildId:
-            interaction.guild.id,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        include: {
-          roles: true,
-          channels: true,
-        },
-      });
-
-    if (!backups.length) {
-      return interaction.reply({
-        content:
-          "❌ No backups found.",
-        ephemeral: true,
-      });
-    }
-
-    const embed =
-      new EmbedBuilder()
-        .setColor(0x5865f2)
-        .setTitle(
-          "📦 Server Backups",
-        );
-
-    for (const backup of backups) {
-      embed.addFields({
-        name: backup.id,
-        value:
-          `Created: <t:${Math.floor(
-            backup.createdAt.getTime() /
-              1000,
-          )}:F>\n` +
-          `Roles: ${backup.roles.length}\n` +
-          `Channels: ${backup.channels.length}`,
-      });
-    }
-
-    await interaction.reply({
-      embeds: [embed],
-      ephemeral: true,
+    const backups = await db.guildBackup.findMany({
+      where: { guildId: interaction.guild.id },
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { roles: true, channels: true } } },
     });
+
+    if (backups.length === 0) return interaction.reply({ content: "❌ No backups found.", ephemeral: true });
+
+    const embed = new EmbedBuilder()
+      .setColor(0x5865F2).setTitle("📦 Server Backups").setTimestamp();
+
+    backups.forEach((b) => {
+      embed.addFields({
+        name: `ID: ${b.id}`,
+        value: `<t:${Math.floor(b.createdAt.getTime() / 1000)}:F>\nRoles: \`${b._count.roles}\` | Channels: \`${b._count.channels}\``,
+      });
+    });
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
   },
 };

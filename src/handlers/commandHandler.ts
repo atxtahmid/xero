@@ -11,15 +11,18 @@ const __dirname = dirname(__filename);
 
 export async function loadCommands(client: Client): Promise<void> {
   const commands = new Collection<string, Command>();
-
   const commandsPath = join(__dirname, "..", "commands");
 
-  let loaded = 0;
+  let loadedCount = 0;
 
-  const folders = readdirSync(commandsPath, { withFileTypes: true });
+  const folders = readdirSync(commandsPath, {
+    withFileTypes: true,
+  });
 
   for (const folder of folders) {
-    if (!folder.isDirectory()) continue;
+    if (!folder.isDirectory()) {
+      continue;
+    }
 
     const folderPath = join(commandsPath, folder.name);
 
@@ -28,31 +31,43 @@ export async function loadCommands(client: Client): Promise<void> {
       return extension === ".js" || extension === ".ts";
     });
 
+    // Optimization: Skip empty folders
+    if (commandFiles.length === 0) continue;
+
     for (const file of commandFiles) {
       try {
         const filePath = join(folderPath, file);
-
         const module = await import(pathToFileURL(filePath).href);
 
-        const command: Command | undefined =
-          module.default ?? module.command;
+        /**
+         * Support multiple export patterns:
+         * 1. export default command;
+         * 2. export default [command1, command2];
+         * 3. export const command = ...;
+         */
+        const rawExports = module.default ?? module.command;
+        const exportsArray = Array.isArray(rawExports) ? rawExports : [rawExports];
 
-        if (!command?.data || !command?.execute) {
-          logger.warn(`Skipping invalid command: ${file}`);
-          continue;
+        for (const cmd of exportsArray) {
+          // Validate structure before adding to collection
+          if (!cmd?.data?.name || !cmd?.execute) {
+            continue;
+          }
+
+          if (commands.has(cmd.data.name)) {
+            logger.warn(`Duplicate command name detected: "${cmd.data.name}". Overwriting the previous instance.`);
+          }
+
+          commands.set(cmd.data.name, cmd);
+          loadedCount++;
         }
-
-        commands.set(command.data.name, command);
-        loaded++;
-
-        logger.info(`Loaded command: ${command.data.name}`);
       } catch (error) {
-        logger.error(`Failed to load command: ${file}`, error);
+        logger.error(`[CommandHandler] Failed to load ${file}:`, error);
       }
     }
   }
 
   client.commands = commands;
 
-  logger.info(`Successfully loaded ${loaded} command(s).`);
+  logger.info(`Successfully initialized ${loadedCount} command(s).`);
 }

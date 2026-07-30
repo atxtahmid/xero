@@ -1,47 +1,45 @@
-import {
-  ChatInputCommandInteraction,
-  PermissionFlagsBits,
-  SlashCommandBuilder,
-} from "discord.js";
-
+import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import backupService from "../../services/backupService.js";
+import { isHighlyTrusted } from "../../utils/auth.js";
+import { Permission } from "../../types/Command.js";
+
+const cooldowns = new Map<string, number>();
+const COOLDOWN_TIME = 1000 * 60 * 60; // 1 Hour
 
 export default {
+  permissions: [Permission.SERVER_OWNER],
+  guildOnly: true,
+
   data: new SlashCommandBuilder()
     .setName("backup-create")
-    .setDescription(
-      "Create a manual server backup.",
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.Administrator,
-    ),
+    .setDescription("Create a manual server backup (Owner/Co-Owner Only)."),
 
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ) {
-    if (!interaction.guild) {
-      return interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
-        ephemeral: true,
+  async execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.guild) return;
+
+    if (!(await isHighlyTrusted(interaction))) {
+      await interaction.reply({ 
+        content: "❌ Access Denied: Only the **Server Owner** or **Co-Owners** can manage server snapshots.", 
+        ephemeral: true 
       });
+      return;
     }
 
-    await interaction.deferReply({
-      ephemeral: true,
-    });
+    const lastRun = cooldowns.get(interaction.guild.id) || 0;
+    if (Date.now() - lastRun < COOLDOWN_TIME) {
+      const remaining = Math.ceil((COOLDOWN_TIME - (Date.now() - lastRun)) / (1000 * 60));
+      return interaction.reply({ content: `⏳ Please wait **${remaining} minutes** before creating another manual backup.`, ephemeral: true });
+    }
 
-    await backupService.createBackup(
-      interaction.guild,
-    );
+    await interaction.deferReply({ ephemeral: true });
 
-    await backupService.deleteOldBackups(
-      interaction.guild.id,
-    );
-
-    await interaction.editReply({
-      content:
-        "✅ Server backup created successfully.",
-    });
+    try {
+      await backupService.createBackup(interaction.guild);
+      await backupService.deleteOldBackups(interaction.guild.id);
+      cooldowns.set(interaction.guild.id, Date.now());
+      await interaction.editReply({ content: "✅ Manual server backup created successfully." });
+    } catch (error) {
+      await interaction.editReply({ content: "❌ Failed to create backup." });
+    }
   },
 };

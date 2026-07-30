@@ -1,133 +1,70 @@
-import {
-  ModerationAction,
-} from "@prisma/client";
-
+import { ModerationAction } from "@prisma/client";
 import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
 
-import {
-  createCase,
-} from "../../services/caseService.js";
-
+import { createCase } from "../../services/caseService.js";
+import { sendModLog } from "../../services/modLogService.js";
 import {
   createSuccessEmbed,
   sendModerationDM,
 } from "../../services/moderationService.js";
-
-import {
-  Permission,
-  type Command,
-} from "../../types/Command.js";
-
-import {
-  canModerate,
-  fetchMember,
-} from "../../utils/moderation.js";
-
-import {
-  sendModLog,
-} from "../../services/modLogService.js";
+import { Permission, type Command } from "../../types/Command.js";
+import { canModerate, fetchMember } from "../../utils/moderation.js";
 
 const command: Command = {
-  permissions: [
-    Permission.MODERATOR,
-  ],
-
+  permissions: [Permission.MODERATOR],
   guildOnly: true,
-
   cooldown: 5,
 
   data: new SlashCommandBuilder()
     .setName("kick")
-    .setDescription(
-      "Kick a member from the server.",
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.KickMembers,
-    )
+    .setDescription("Kick a member from the server.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
     .addUserOption((option) =>
       option
         .setName("user")
-        .setDescription(
-          "Member to kick.",
-        )
-        .setRequired(true),
+        .setDescription("Member to kick.")
+        .setRequired(true)
     )
     .addStringOption((option) =>
       option
         .setName("reason")
-        .setDescription(
-          "Reason for the kick.",
-        )
-        .setRequired(false),
+        .setDescription("Reason for the kick.")
+        .setRequired(false)
     ),
 
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ) {
-    if (!interaction.guild) {
-      await interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
-        ephemeral: true,
-      });
+  async execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.guild) return;
 
-      return;
-    }
+    await interaction.deferReply();
 
-    const member =
-      await fetchMember(
-        interaction,
-        interaction.options.getUser(
-          "user",
-          true,
-        ).id,
-      );
+    const targetUser = interaction.options.getUser("user", true);
+    const member = await fetchMember(interaction, targetUser.id);
 
     if (!member) {
-      await interaction.reply({
-        content:
-          "❌ Member not found.",
-        ephemeral: true,
-      });
-
+      await interaction.editReply({ content: "❌ That member is no longer in the server." });
       return;
     }
 
-    const check =
-      canModerate(
-        interaction,
-        member,
-      );
-
+    // 1. Hierarchy and Permission Validation
+    const check = canModerate(interaction, member);
     if (!check.success) {
-      await interaction.reply({
-        content: check.message!,
-        ephemeral: true,
-      });
-
+      await interaction.editReply({ content: check.message! });
       return;
     }
 
     if (!member.kickable) {
-      await interaction.reply({
-        content:
-          "❌ I can't kick that member.",
-        ephemeral: true,
-      });
-
+      await interaction.editReply({ content: "❌ I do not have permission to kick this member." });
       return;
     }
 
-    const reason =
-      interaction.options.getString(
-        "reason",
-      ) ?? "No reason provided.";
+    const reason = interaction.options.getString("reason") ?? "No reason provided.";
 
-    await sendModerationDM({
+    // 2. DM the user before kicking
+    const dmSent = await sendModerationDM({
       action: "Kick",
       guild: interaction.guild,
       moderator: interaction.user,
@@ -135,39 +72,45 @@ const command: Command = {
       reason,
     });
 
-    await member.kick(reason);
+    // 3. Perform the Kick
+    try {
+      await member.kick(`${interaction.user.tag}: ${reason}`);
+    } catch (error) {
+      await interaction.editReply({ content: "❌ Failed to execute the kick. Check my permissions." });
+      return;
+    }
 
-    const modCase =
-      await createCase({
-        guildId:
-          interaction.guild.id,
-        userId:
-          member.id,
-        moderatorId:
-          interaction.user.id,
-        action:
-          ModerationAction.KICK,
-        reason,
-      });
+    // 4. Create Database Case
+    const modCase = await createCase({
+      guildId: interaction.guild.id,
+      userId: targetUser.id,
+      moderatorId: interaction.user.id,
+      action: ModerationAction.KICK,
+      reason,
+    });
 
+    // 5. Send Log
     await sendModLog({
-        guild: interaction.guild,
-        moderator: interaction.user,
-        target: member.user,
-        action: "Kick",
-        reason,
-        caseId: modCase.id,
-      });
-    
-    await interaction.reply({
+      guild: interaction.guild,
+      moderator: interaction.user,
+      target: targetUser,
+      action: "Kick",
+      reason,
+      caseId: modCase.id,
+    });
+
+    // 6. Reply to Moderator
+    const dmStatus = dmSent ? "" : "\n⚠️ *Note: Could not DM the user (DMs closed).*";
+    await interaction.editReply({
       embeds: [
         createSuccessEmbed(
           "Member Kicked",
           [
-            `**User:** ${member.user.tag}`,
+            `**User:** ${targetUser.tag} (\`${targetUser.id}\`)`,
             `**Reason:** ${reason}`,
             `**Case ID:** ${modCase.id}`,
-          ].join("\n"),
+            dmStatus,
+          ].join("\n")
         ),
       ],
     });

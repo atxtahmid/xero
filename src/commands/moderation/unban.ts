@@ -4,91 +4,61 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import {
-  Permission,
-  type Command,
-} from "../../types/Command.js";
+import { Permission, type Command } from "../../types/Command.js";
+import { sendModLog } from "../../services/modLogService.js";
 
 const command: Command = {
-  permissions: [
-    Permission.MODERATOR,
-  ],
-
+  permissions: [Permission.MODERATOR],
   guildOnly: true,
-
-  cooldown: 3,
+  cooldown: 5,
 
   data: new SlashCommandBuilder()
     .setName("unban")
-    .setDescription(
-      "Unban a user from the server.",
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.BanMembers,
+    .setDescription("Unban a user from the server.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
+    .addStringOption((option) =>
+      option.setName("user").setDescription("User ID to unban.").setRequired(true)
     )
     .addStringOption((option) =>
-      option
-        .setName("user")
-        .setDescription(
-          "User ID to unban.",
-        )
-        .setRequired(true),
-    )
-    .addStringOption((option) =>
-      option
-        .setName("reason")
-        .setDescription(
-          "Reason for the unban.",
-        )
-        .setRequired(false),
+      option.setName("reason").setDescription("Reason for the unban.").setRequired(false)
     ),
 
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ) {
-    if (!interaction.guild) {
-      await interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
-        ephemeral: true,
-      });
+  async execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.guild) return;
 
-      return;
-    }
+    await interaction.deferReply();
 
-    const userId =
-      interaction.options.getString(
-        "user",
-        true,
-      );
-
-    const reason =
-      interaction.options.getString(
-        "reason",
-      ) ?? "No reason provided.";
+    const userId = interaction.options.getString("user", true);
+    const reason = interaction.options.getString("reason") ?? "No reason provided.";
 
     try {
-      await interaction.guild.bans.fetch(
-        userId,
-      );
-    } catch {
-      await interaction.reply({
-        content:
-          "❌ That user is not banned.",
-        ephemeral: true,
+      const ban = await interaction.guild.bans.fetch(userId).catch(() => null);
+      
+      if (!ban) {
+        await interaction.editReply({ content: "❌ This user is not banned from this server." });
+        return;
+      }
+
+      await interaction.guild.bans.remove(userId, `${interaction.user.tag}: ${reason}`);
+
+      await interaction.editReply({
+        content: `✅ User **${ban.user.tag}** (\`${userId}\`) has been unbanned.\n**Reason:** ${reason}`,
       });
 
-      return;
+      // Note: Prisma schema ModerationAction currently lacks an UNBAN action.
+      // We log to Discord for audit trail.
+      await sendModLog({
+        guild: interaction.guild,
+        moderator: interaction.user,
+        target: ban.user,
+        action: "Unban",
+        reason,
+        caseId: "N/A",
+      });
+    } catch (error) {
+      console.error("[Unban Command] Error:", error);
+      await interaction.editReply({ content: "❌ Failed to unban user. Ensure the ID is correct and I have permissions." });
     }
-
-    await interaction.guild.bans.remove(
-      userId,
-      reason,
-    );
-
-    await interaction.reply({
-      content: `✅ User \`${userId}\` has been unbanned.\n**Reason:** ${reason}`,
-    });
   },
 };
 

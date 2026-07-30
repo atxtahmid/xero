@@ -1,127 +1,40 @@
-import {
-  ChatInputCommandInteraction,
-  EmbedBuilder,
-  PermissionFlagsBits,
-  SlashCommandBuilder,
-} from "discord.js";
-
+import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from "discord.js";
 import db from "../../services/database.js";
+import { isHighlyTrusted } from "../../utils/auth.js";
+import { Permission } from "../../types/Command.js";
 
 export default {
+  permissions: [Permission.SERVER_OWNER],
   data: new SlashCommandBuilder()
     .setName("backup-info")
-    .setDescription(
-      "View information about a backup.",
-    )
-    .addStringOption((option) =>
-      option
-        .setName("id")
-        .setDescription(
-          "Backup ID",
-        )
-        .setRequired(true),
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.Administrator,
-    ),
+    .setDescription("View backup details (Owner/Co-Owner Only).")
+    .addStringOption((opt) => opt.setName("id").setDescription("Backup ID").setRequired(true)),
 
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ) {
-    if (!interaction.guild) {
-      return interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
-        ephemeral: true,
+  async execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.guild) return;
+
+    if (!(await isHighlyTrusted(interaction))) {
+      await interaction.reply({ 
+        content: "❌ Access Denied: Only the **Server Owner** or **Co-Owners** can manage server snapshots.", 
+        ephemeral: true 
       });
+      return;
     }
 
-    const id =
-      interaction.options.getString(
-        "id",
-        true,
-      );
+    const id = interaction.options.getString("id", true);
+    const backup = await db.guildBackup.findUnique({ where: { id }, include: { roles: true, channels: true } });
 
-    const backup =
-      await db.guildBackup.findUnique({
-        where: {
-          id,
-        },
-        include: {
-          roles: true,
-          channels: {
-            include: {
-              overwrites: true,
-            },
-          },
-        },
-      });
-
-    if (
-      !backup ||
-      backup.guildId !==
-        interaction.guild.id
-    ) {
-      return interaction.reply({
-        content:
-          "❌ Backup not found.",
-        ephemeral: true,
-      });
+    if (!backup || backup.guildId !== interaction.guild.id) {
+      return interaction.reply({ content: "❌ Backup not found.", ephemeral: true });
     }
 
-    const overwrites =
-      backup.channels.reduce(
-        (
-          total,
-          channel,
-        ) =>
-          total +
-          channel.overwrites.length,
-        0,
+    const embed = new EmbedBuilder()
+      .setColor(0x5865F2).setTitle(`📦 Backup: ${backup.id}`)
+      .addFields(
+        { name: "Created", value: `<t:${Math.floor(backup.createdAt.getTime() / 1000)}:F>`, inline: true },
+        { name: "Stats", value: `• Roles: \`${backup.roles.length}\`\n• Channels: \`${backup.channels.length}\`` }
       );
 
-    const embed =
-      new EmbedBuilder()
-        .setColor(0x5865f2)
-        .setTitle(
-          "📦 Backup Information",
-        )
-        .addFields(
-          {
-            name: "Backup ID",
-            value: backup.id,
-          },
-          {
-            name: "Created",
-            value: `<t:${Math.floor(
-              backup.createdAt.getTime() /
-                1000,
-            )}:F>`,
-          },
-          {
-            name: "Roles",
-            value:
-              backup.roles.length.toString(),
-            inline: true,
-          },
-          {
-            name: "Channels",
-            value:
-              backup.channels.length.toString(),
-            inline: true,
-          },
-          {
-            name:
-              "Permission Overwrites",
-            value:
-              overwrites.toString(),
-            inline: true,
-          },
-        );
-
-    await interaction.reply({
-      embeds: [embed],
-      ephemeral: true,
-    });
+    await interaction.reply({ embeds: [embed], ephemeral: true });
   },
 };

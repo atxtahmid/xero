@@ -1,3 +1,5 @@
+--- bot/src/commands/moderation/announce.ts ---
+
 import {
   ChannelType,
   ChatInputCommandInteraction,
@@ -7,115 +9,77 @@ import {
   TextChannel,
 } from "discord.js";
 
-import {
-  Permission,
-  type Command,
-} from "../../types/Command.js";
+import { Permission, type Command } from "../../types/Command.js";
+import { sendModLog } from "../../services/modLogService.js";
 
 const command: Command = {
-  permissions: [
-    Permission.MODERATOR,
-  ],
-
+  permissions: [Permission.MODERATOR],
   guildOnly: true,
-
   cooldown: 5,
 
   data: new SlashCommandBuilder()
     .setName("announce")
-    .setDescription(
-      "Send an announcement.",
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.ManageGuild,
-    )
+    .setDescription("Send an announcement.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addChannelOption((option) =>
       option
         .setName("channel")
-        .setDescription(
-          "Channel to send the announcement.",
-        )
-        .addChannelTypes(
-          ChannelType.GuildText,
-          ChannelType.GuildAnnouncement,
-        )
-        .setRequired(true),
+        .setDescription("Channel to send the announcement.")
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+        .setRequired(true)
     )
     .addStringOption((option) =>
-      option
-        .setName("title")
-        .setDescription(
-          "Announcement title.",
-        )
-        .setRequired(true),
+      option.setName("title").setDescription("Announcement title.").setRequired(true)
     )
     .addStringOption((option) =>
-      option
-        .setName("message")
-        .setDescription(
-          "Announcement message.",
-        )
-        .setRequired(true),
+      option.setName("message").setDescription("Announcement message.").setRequired(true)
     ),
 
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ) {
-    const channel =
-      interaction.options.getChannel(
-        "channel",
-        true,
-      );
+  async execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.guild) return;
 
-    const title =
-      interaction.options.getString(
-        "title",
-        true,
-      );
+    const channel = interaction.options.getChannel("channel", true) as TextChannel;
+    const title = interaction.options.getString("title", true);
+    const message = interaction.options.getString("message", true);
 
-    const message =
-      interaction.options.getString(
-        "message",
-        true,
-      );
-
-    if (
-      channel.type !==
-        ChannelType.GuildText &&
-      channel.type !==
-        ChannelType.GuildAnnouncement
-    ) {
+    // 1. Bot Permission Check
+    const me = interaction.guild.members.me;
+    if (!me?.permissionsIn(channel).has([PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
       await interaction.reply({
-        content:
-          "❌ Invalid announcement channel.",
+        content: `❌ I need **Send Messages** and **Embed Links** permissions in ${channel}.`,
         ephemeral: true,
       });
-
       return;
     }
 
-    const target =
-      channel as TextChannel;
+    const embed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle(title)
+      .setDescription(message)
+      .setFooter({ text: `Announcement by ${interaction.user.tag}` })
+      .setTimestamp();
 
-    const embed =
-      new EmbedBuilder()
-        .setColor(0x5865f2)
-        .setTitle(title)
-        .setDescription(message)
-        .setFooter({
-          text: `Announcement by ${interaction.user.tag}`,
-        })
-        .setTimestamp();
+    try {
+      await channel.send({
+        embeds: [embed],
+        allowedMentions: { parse: [] }, // Safety
+      });
 
-    await target.send({
-      embeds: [embed],
-    });
+      await interaction.reply({ content: "✅ Announcement sent.", ephemeral: true });
 
-    await interaction.reply({
-      content:
-        "✅ Announcement sent.",
-      ephemeral: true,
-    });
+      // 2. Log trail
+      await sendModLog({
+        guild: interaction.guild,
+        moderator: interaction.user,
+        target: interaction.user,
+        action: "Announcement",
+        reason: `Sent announcement to <#${channel.id}>: ${title}`,
+        caseId: "N/A",
+      });
+    } catch (error) {
+      console.error("[Announce Command] Error:", error);
+      await interaction.reply({ content: "❌ Failed to send announcement.", ephemeral: true });
+    }
   },
 };
 

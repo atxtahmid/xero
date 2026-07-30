@@ -1,54 +1,36 @@
 import {
-  Client,
+  ActivityType,
   Events,
+  type Client,
 } from "discord.js";
 
-import config from "../../config/index.js";
 import logger from "../../services/logger.js";
-import backupScheduler from "../../services/backupScheduler.js";
-import db from "../../services/database.js";
-
 import type { Event } from "../../types/Event.js";
 
-const event: Event<typeof Events.ClientReady> = {
+const event: Event<Events.ClientReady> = {
   name: Events.ClientReady,
   once: true,
 
   async execute(
     client: Client<true>,
-  ) {
+  ): Promise<void> {
     logger.info(
-      `Logged in as ${client.user.tag}`,
+      `${client.user.tag} is online.`,
     );
 
-    logger.info(
-      `Serving ${client.guilds.cache.size} guild(s).`,
-    );
+    client.user.setPresence({
+      status: "online",
 
-    // Sync every guild into the database
-    for (const guild of client.guilds.cache.values()) {
-      await db.guild.upsert({
-        where: {
-          id: guild.id,
+      activities: [
+        {
+          name:
+            "/help | Xero",
+
+          type:
+            ActivityType.Listening,
         },
-        update: {},
-        create: {
-          id: guild.id,
-        },
-      });
-
-      logger.info(
-        `Registered guild: ${guild.name}`,
-      );
-    }
-
-    logger.info(
-      `Xero v${config.app.version} is now online.`,
-    );
-
-    await backupScheduler.start(
-      client,
-    );
+      ],
+    });
   },
 };
 

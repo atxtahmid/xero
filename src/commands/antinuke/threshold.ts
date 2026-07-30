@@ -1,174 +1,58 @@
-import {
-  ChatInputCommandInteraction,
-  PermissionFlagsBits,
-  SlashCommandBuilder,
-} from "discord.js";
-
+import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import type { Command } from "../../types/Command.js";
-
-import antiNukeSettingsService from "../../services/antiNukeSettingsService.js";
 import { Permission } from "../../types/Command.js";
-import { hasPermission } from "../../utils/permissions.js";
+import antiNukeSettingsService from "../../services/antiNukeSettingsService.js";
+import { isHighlyTrusted } from "../../utils/auth.js";
+import { sendModLog } from "../../services/modLogService.js";
 
-const actionMap: Record<string, string> = {
-  bot_add: "botAddThreshold",
-
-  mass_ban: "massBanThreshold",
-  mass_kick: "massKickThreshold",
-
-  channel_delete: "channelDeleteThreshold",
-  channel_create: "channelCreateThreshold",
-  channel_update: "channelUpdateThreshold",
-
-  role_delete: "roleDeleteThreshold",
-  role_create: "roleCreateThreshold",
-  role_update: "roleUpdateThreshold",
-
-  webhook_create: "webhookCreateThreshold",
-
-  server_update: "serverUpdateThreshold",
+const fieldMap: Record<string, string> = {
+  bot: "botAddThreshold", ban: "massBanThreshold", kick: "massKickThreshold",
+  c_del: "channelDeleteThreshold", c_cre: "channelCreateThreshold",
+  r_del: "roleDeleteThreshold", r_cre: "roleCreateThreshold"
 };
 
 const command: Command = {
-  permissions: [Permission.ADMIN],
-
+  permissions: [Permission.SERVER_OWNER],
+  guildOnly: true,
   data: new SlashCommandBuilder()
     .setName("antinuke-threshold")
-    .setDescription(
-      "Configure Anti-Nuke thresholds.",
-    )
-    .addStringOption((option) =>
-      option
-        .setName("action")
-        .setDescription("Action")
-        .setRequired(true)
-        .addChoices(
-          {
-            name: "Bot Add",
-            value: "bot_add",
-          },
-          {
-            name: "Mass Ban",
-            value: "mass_ban",
-          },
-          {
-            name: "Mass Kick",
-            value: "mass_kick",
-          },
-          {
-            name: "Channel Delete",
-            value: "channel_delete",
-          },
-          {
-            name: "Channel Create",
-            value: "channel_create",
-          },
-          {
-            name: "Channel Update",
-            value: "channel_update",
-          },
-          {
-            name: "Role Delete",
-            value: "role_delete",
-          },
-          {
-            name: "Role Create",
-            value: "role_create",
-          },
-          {
-            name: "Role Update",
-            value: "role_update",
-          },
-          {
-            name: "Webhook Create",
-            value: "webhook_create",
-          },
-          {
-            name: "Server Update",
-            value: "server_update",
-          },
-        ),
-    )
-    .addIntegerOption((option) =>
-      option
-        .setName("value")
-        .setDescription(
-          "Threshold (1-20)",
-        )
-        .setRequired(true)
-        .setMinValue(1)
-        .setMaxValue(20),
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.Administrator,
-    ),
-
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ): Promise<void> {
-    if (
-      !(await hasPermission(
-        interaction,
-        command.permissions,
+    .setDescription("Configure thresholds (Owner/Co-Owner Only).")
+    .addStringOption(opt => opt.setName("action").setDescription("Action type").setRequired(true)
+      .addChoices(
+        { name: "Bot Add", value: "bot" }, { name: "Mass Ban", value: "ban" },
+        { name: "Mass Kick", value: "kick" }, { name: "Channel Delete", value: "c_del" },
+        { name: "Role Delete", value: "r_del" }
       ))
-    ) {
-      await interaction.reply({
-        content:
-          "❌ You don't have permission to use this command.",
-        ephemeral: true,
-      });
+    .addIntegerOption(opt => opt.setName("value").setDescription("Threshold count (1-20)").setMinValue(1).setMaxValue(20).setRequired(true)) as SlashCommandBuilder,
 
+  async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+    if (!interaction.guild) return;
+
+    if (!(await isHighlyTrusted(interaction))) {
+      await interaction.reply({ 
+        content: "❌ Access Denied: This command is restricted to the **Server Owner** and **Co-Owners**.", 
+        ephemeral: true 
+      });
       return;
     }
 
-    if (!interaction.guild) {
-      await interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
-        ephemeral: true,
-      });
+    const actionKey = interaction.options.getString("action", true);
+    const value = interaction.options.getInteger("value", true);
+    const field = fieldMap[actionKey];
 
-      return;
-    }
+    await interaction.deferReply({ ephemeral: true });
+    await antiNukeSettingsService.setThreshold(interaction.guild.id, field, value);
 
-    const action =
-      interaction.options.getString(
-        "action",
-        true,
-      );
+    await interaction.editReply({ content: `✅ Updated **${actionKey}** threshold to **${value}**.` });
 
-    const value =
-      interaction.options.getInteger(
-        "value",
-        true,
-      );
-
-    const field = actionMap[action];
-
-    if (!field) {
-      await interaction.reply({
-        content:
-          "❌ Invalid Anti-Nuke action.",
-        ephemeral: true,
-      });
-
-      return;
-    }
-
-    await antiNukeSettingsService.setThreshold(
-      interaction.guild.id,
-      field,
-      value,
-    );
-
-    await interaction.reply({
-      content: `✅ Updated **${action.replaceAll(
-        "_",
-        " ",
-      )}** threshold to **${value}**.`,
-      ephemeral: true,
+    await sendModLog({
+      guild: interaction.guild,
+      moderator: interaction.user,
+      target: interaction.user,
+      action: "Anti-Nuke Config",
+      reason: `Changed ${actionKey} threshold to ${value}`,
+      caseId: "N/A"
     });
   },
 };
-
 export default command;

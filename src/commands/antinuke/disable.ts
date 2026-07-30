@@ -1,63 +1,41 @@
-import {
-  ChatInputCommandInteraction,
-  PermissionFlagsBits,
-  SlashCommandBuilder,
-} from "discord.js";
-
+import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import type { Command } from "../../types/Command.js";
-
 import { Permission } from "../../types/Command.js";
 import antiNukeSettingsService from "../../services/antiNukeSettingsService.js";
-import { hasPermission } from "../../utils/permissions.js";
+import { isHighlyTrusted } from "../../utils/auth.js";
+import { sendModLog } from "../../services/modLogService.js";
 
 const command: Command = {
-  permissions: [Permission.ADMIN],
-
+  permissions: [Permission.SERVER_OWNER],
+  guildOnly: true,
   data: new SlashCommandBuilder()
     .setName("antinuke-disable")
-    .setDescription("Disable the Anti-Nuke system.")
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.Administrator,
-    ),
+    .setDescription("Disable the Anti-Nuke system (Owner/Co-Owner Only)."),
 
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ): Promise<void> {
-    if (
-      !(await hasPermission(
-        interaction,
-        [Permission.ADMIN],
-      ))
-    ) {
-      await interaction.reply({
-        content:
-          "❌ You do not have permission to use this command.",
-        ephemeral: true,
+  async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+    if (!interaction.guild) return;
+
+    if (!(await isHighlyTrusted(interaction))) {
+      await interaction.reply({ 
+        content: "❌ Access Denied: This command is restricted to the **Server Owner** and **Co-Owners**.", 
+        ephemeral: true 
       });
-
       return;
     }
 
-    if (!interaction.guild) {
-      await interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
-        ephemeral: true,
-      });
+    await interaction.deferReply({ ephemeral: true });
+    await antiNukeSettingsService.disable(interaction.guild.id);
 
-      return;
-    }
+    await interaction.editReply({ content: "🛑 Anti-Nuke system has been **Disabled**." });
 
-    await antiNukeSettingsService.disable(
-      interaction.guild.id,
-    );
-
-    await interaction.reply({
-      content:
-        "🛑 Anti-Nuke has been disabled.",
-      ephemeral: true,
+    await sendModLog({
+      guild: interaction.guild,
+      moderator: interaction.user,
+      target: interaction.user,
+      action: "Anti-Nuke Config",
+      reason: "Anti-Nuke system disabled.",
+      caseId: "N/A"
     });
   },
 };
-
 export default command;

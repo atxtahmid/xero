@@ -5,143 +5,103 @@ import {
 } from "discord.js";
 
 import warningService from "../../services/warningService.js";
-
-import {
-  Permission,
-  type Command,
-} from "../../types/Command.js";
+import { Permission, type Command } from "../../types/Command.js";
+import { canModerate, fetchMember } from "../../utils/moderation.js";
+import { sendModLog } from "../../services/modLogService.js";
 
 const command: Command = {
-  permissions: [
-    Permission.MODERATOR,
-  ],
-
+  permissions: [Permission.MODERATOR],
   guildOnly: true,
-
-  cooldown: 3,
+  cooldown: 5,
 
   data: new SlashCommandBuilder()
     .setName("clearwarn")
-    .setDescription(
-      "Remove one or all warnings from a member.",
-    )
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.ModerateMembers,
-    )
+    .setDescription("Remove one or all warnings from a member.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
     .addUserOption((option) =>
       option
         .setName("user")
-        .setDescription(
-          "Member whose warnings will be removed.",
-        )
-        .setRequired(true),
+        .setDescription("Member whose warnings will be removed.")
+        .setRequired(true)
     )
     .addStringOption((option) =>
       option
         .setName("type")
-        .setDescription(
-          "Clear one warning or all warnings.",
-        )
+        .setDescription("Clear one specific warning or all.")
         .setRequired(true)
         .addChoices(
-          {
-            name: "One",
-            value: "one",
-          },
-          {
-            name: "All",
-            value: "all",
-          },
-        ),
+          { name: "Specific Warning", value: "one" },
+          { name: "All Warnings", value: "all" }
+        )
     )
     .addIntegerOption((option) =>
       option
-        .setName("warning")
-        .setDescription(
-          "Warning number from /warnings.",
-        )
+        .setName("number")
+        .setDescription("Warning number (see /warnings).")
         .setMinValue(1)
-        .setRequired(false),
+        .setRequired(false)
     ),
 
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ) {
-    if (!interaction.guild) {
-      await interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
-        ephemeral: true,
-      });
+  async execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.guild) return;
 
-      return;
+    await interaction.deferReply({ ephemeral: true });
+
+    const targetUser = interaction.options.getUser("user", true);
+    const member = await fetchMember(interaction, targetUser.id);
+    const type = interaction.options.getString("type", true);
+    const number = interaction.options.getInteger("number");
+
+    // 1. Hierarchy Check: Prevent clearing records for superiors
+    if (member) {
+      const check = canModerate(interaction, member);
+      if (!check.success) {
+        await interaction.editReply({ content: check.message! });
+        return;
+      }
     }
-
-    const user =
-      interaction.options.getUser(
-        "user",
-        true,
-      );
-
-    const type =
-      interaction.options.getString(
-        "type",
-        true,
-      );
 
     if (type === "all") {
-      await warningService.clear(
-        interaction.guild.id,
-        user.id,
-      );
+      await warningService.clear(interaction.guild.id, targetUser.id);
+      
+      await interaction.editReply({ content: `✅ Cleared all warnings for **${targetUser.tag}**.` });
 
-      await interaction.reply({
-        content: `✅ Cleared all warnings for **${user.tag}**.`,
+      await sendModLog({
+        guild: interaction.guild,
+        moderator: interaction.user,
+        target: targetUser,
+        action: "Clear Warnings",
+        reason: "Moderator cleared all warning records.",
+        caseId: "N/A",
       });
-
       return;
     }
 
-    const number =
-      interaction.options.getInteger(
-        "warning",
-      );
-
+    // Single warning removal logic
     if (!number) {
-      await interaction.reply({
-        content:
-          "❌ You must provide a warning number.",
-        ephemeral: true,
-      });
-
+      await interaction.editReply({ content: "❌ You must provide a warning number when using type 'Specific Warning'." });
       return;
     }
 
-    const warnings =
-      await warningService.getAll(
-        interaction.guild.id,
-        user.id,
-      );
+    const warnings = await warningService.getAll(interaction.guild.id, targetUser.id);
 
-    if (
-      number < 1 ||
-      number > warnings.length
-    ) {
-      await interaction.reply({
-        content:
-          "❌ Invalid warning number.",
-        ephemeral: true,
-      });
-
+    if (number < 1 || number > warnings.length) {
+      await interaction.editReply({ content: "❌ Invalid warning number. Check `/warnings` for the correct list." });
       return;
     }
 
-    await warningService.delete(
-      warnings[number - 1].id,
-    );
+    const targetWarning = warnings[number - 1];
+    await warningService.delete(targetWarning.id);
 
-    await interaction.reply({
-      content: `✅ Removed warning #${number} from **${user.tag}**.`,
+    await interaction.editReply({ content: `✅ Removed warning **#${number}** from **${targetUser.tag}**.` });
+
+    await sendModLog({
+      guild: interaction.guild,
+      moderator: interaction.user,
+      target: targetUser,
+      action: "Remove Warning",
+      reason: `Moderator removed specific warning: ${targetWarning.reason}`,
+      caseId: "N/A",
     });
   },
 };

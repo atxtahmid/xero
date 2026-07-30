@@ -6,141 +6,82 @@ import {
   VoiceBasedChannel,
 } from "discord.js";
 
-import logger from "../../services/logger.js";
-
-import {
-  Permission,
-  type Command,
-} from "../../types/Command.js";
+import { Permission, type Command } from "../../types/Command.js";
+import { sendModLog } from "../../services/modLogService.js";
 
 const command: Command = {
-  permissions: [
-    Permission.MODERATOR,
-  ],
-
+  permissions: [Permission.MODERATOR],
   guildOnly: true,
+  cooldown: 20,
 
-  cooldown: 10,
+  data: new SlashCommandBuilder()
+    .setName("moveall")
+    .setDescription("Move everyone from one voice channel to another.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.MoveMembers)
+    .addChannelOption((option) =>
+      option
+        .setName("from")
+        .setDescription("Source voice channel.")
+        .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
+        .setRequired(true)
+    )
+    .addChannelOption((option) =>
+      option
+        .setName("to")
+        .setDescription("Destination voice channel.")
+        .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
+        .setRequired(true)
+    ) as SlashCommandBuilder,
 
-  data: (
-    new SlashCommandBuilder()
-      .setName("moveall")
-      .setDescription(
-        "Move everyone from one voice channel to another.",
-      )
-      .setDefaultMemberPermissions(
-        PermissionFlagsBits.MoveMembers,
-      )
-      .addChannelOption((option) =>
-        option
-          .setName("from")
-          .setDescription(
-            "Source voice channel.",
-          )
-          .addChannelTypes(
-            ChannelType.GuildVoice,
-            ChannelType.GuildStageVoice,
-          )
-          .setRequired(true),
-      )
-      .addChannelOption((option) =>
-        option
-          .setName("to")
-          .setDescription(
-            "Destination voice channel.",
-          )
-          .addChannelTypes(
-            ChannelType.GuildVoice,
-            ChannelType.GuildStageVoice,
-          )
-          .setRequired(true),
-      )
-  ) as SlashCommandBuilder,
+  async execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.guild) return;
 
-  async execute(
-    interaction: ChatInputCommandInteraction,
-  ) {
-    if (!interaction.guild) {
-      await interaction.reply({
-        content:
-          "❌ This command can only be used in a server.",
-        ephemeral: true,
-      });
+    await interaction.deferReply();
 
-      return;
-    }
-
-    const from =
-      interaction.options.getChannel(
-        "from",
-        true,
-      ) as VoiceBasedChannel;
-
-    const to =
-      interaction.options.getChannel(
-        "to",
-        true,
-      ) as VoiceBasedChannel;
+    const from = interaction.options.getChannel("from", true) as VoiceBasedChannel;
+    const to = interaction.options.getChannel("to", true) as VoiceBasedChannel;
 
     if (from.id === to.id) {
-      await interaction.reply({
-        content:
-          "❌ Source and destination channels must be different.",
-        ephemeral: true,
-      });
-
+      await interaction.editReply({ content: "❌ Source and destination channels must be different." });
       return;
     }
 
-    const members = [
-      ...from.members.values(),
-    ];
+    const me = interaction.guild.members.me;
+    if (!me?.permissionsIn(from).has(PermissionFlagsBits.MoveMembers) || !me?.permissionsIn(to).has(PermissionFlagsBits.MoveMembers)) {
+      await interaction.editReply({ content: "❌ I need the **Move Members** permission in both channels." });
+      return;
+    }
 
-    logger.info(
-      `[MOVEALL] Source=${from.name} Members=${members.length}`,
-    );
-
+    const members = [...from.members.values()];
     if (members.length === 0) {
-      await interaction.reply({
-        content:
-          "❌ The source voice channel has no members.",
-        ephemeral: true,
-      });
-
+      await interaction.editReply({ content: "❌ The source voice channel is empty." });
       return;
     }
 
     let moved = 0;
+    let failed = 0;
 
-    for (const member of members) {
-      logger.info(
-        `[MOVEALL] Attempting ${member.user.tag} (${member.id})`,
-      );
-
-      try {
-        await member.voice.setChannel(
-          to,
-        );
-
-        moved++;
-
-        logger.info(
-          `[MOVEALL] Success ${member.user.tag}`,
-        );
-      } catch (error) {
-        logger.error(
-          `[MOVEALL] Failed ${member.user.tag}`,
-          error,
-        );
-      }
-    }
-
-    logger.info(
-      `[MOVEALL] Finished. Moved=${moved}/${members.length}`,
+    // Use Promise.allSettled to move everyone. 
+    // While Discord rate-limits voice moves, batching them is safer than a sequential loop for interaction life.
+    const movePromises = members.map(member => 
+      member.voice.setChannel(to, `Mass move by ${interaction.user.tag}`)
+        .then(() => { moved++; })
+        .catch(() => { failed++; })
     );
 
-    await interaction.reply({
-      content: `✅ Moved **${moved}** member(s) to ${to}.`,
+    await Promise.allSettled(movePromises);
+
+    await interaction.editReply({
+      content: `✅ Finished: Moved **${moved}** member(s) to ${to}.${failed > 0 ? ` (${failed} failed)` : ""}`
+    });
+
+    await sendModLog({
+      guild: interaction.guild,
+      moderator: interaction.user,
+      target: interaction.user,
+      action: "Mass Move",
+      reason: `Moved ${moved} members from #${from.name} to #${to.name}.`,
+      caseId: "N/A",
     });
   },
 };
