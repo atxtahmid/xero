@@ -1,8 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as {
+type GlobalPrisma = {
   prisma?: PrismaClient;
 };
+
+const globalForPrisma = globalThis as GlobalPrisma;
 
 const db =
   globalForPrisma.prisma ??
@@ -13,5 +15,9 @@ const db =
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = db;
 }
+
+process.on("beforeExit", async () => {
+  await db.$disconnect();
+});
 
 export default db;

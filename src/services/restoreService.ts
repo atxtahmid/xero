@@ -11,101 +11,170 @@ import logger from "./logger.js";
 class RestoreService {
   async restore(guild: Guild): Promise<void> {
     const backup = await backupService.latestBackup(guild.id);
-    if (!backup) throw new Error("No backup found.");
 
-    logger.info(`[Restore] Starting restoration for ${guild.name}...`);
+    if (!backup) {
+      throw new Error("No backup found.");
+    }
 
-    // 1. Roles (Creation first, positioning later)
-    await this.restoreRoles(guild, backup.roles);
-    
-    // 2. Categories (Parents must exist before children)
-    await this.restoreCategories(guild, backup.channels);
+    logger.info(`[Restore] Starting restoration for ${guild.name}`);
 
-    // 3. Normal Channels
-    await this.restoreChannels(guild, backup.channels);
-    
+    const roleMap = new Map<string, string>();
+    const categoryMap = new Map<string, string>();
+
+    await this.restoreRoles(guild, backup.roles, roleMap);
+    await this.restoreCategories(guild, backup.channels, categoryMap);
+    await this.restoreChannels(
+      guild,
+      backup.channels,
+      roleMap,
+      categoryMap,
+    );
+
     logger.info(`[Restore] Restoration completed for ${guild.name}`);
   }
 
-  private async restoreRoles(guild: Guild, roles: any[]): Promise<void> {
-    const roleMap: { role: any; newId?: string }[] = roles.map(r => ({ role: r }));
+  private async restoreRoles(
+    guild: Guild,
+    roles: any[],
+    roleMap: Map<string, string>,
+  ): Promise<void> {
+    for (const backupRole of roles) {
+      let role = guild.roles.cache.find(
+        (r) => r.name === backupRole.name && !r.managed,
+      );
 
-    for (const item of roleMap) {
-      if (guild.roles.cache.some(r => r.name === item.role.name && r.id !== guild.id)) continue;
+      if (!role) {
+        try {
+          role = await guild.roles.create({
+            name: backupRole.name,
+            color: backupRole.color,
+            hoist: backupRole.hoist,
+            mentionable: backupRole.mentionable,
+            permissions: BigInt(backupRole.permissions),
+            reason: "Backup Restore",
+          });
+        } catch (error) {
+          logger.error(
+            `[Restore] Failed to create role ${backupRole.name}`,
+            error,
+          );
+          continue;
+        }
+      }
 
-      try {
-        const created = await guild.roles.create({
-          name: item.role.name,
-          color: item.role.color,
-          hoist: item.role.hoist,
-          mentionable: item.role.mentionable,
-          permissions: BigInt(item.role.permissions),
-          reason: "Anti-Nuke Restoration",
-        });
-        item.newId = created.id;
-        // Small delay to prevent rate limits
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (e) { logger.error(`[Restore] Role create failed: ${item.role.name}`, e); }
+      roleMap.set(backupRole.roleId, role.id);
     }
 
-    // Attempt to set positions (Filtered to only roles the bot can move)
     const positions = roles
-      .filter(r => guild.roles.cache.some(gr => gr.name === r.name))
-      .map(r => ({
-        role: guild.roles.cache.find(gr => gr.name === r.name)!.id,
-        position: r.position
-      }));
-    
+      .map((r) => {
+        const id = roleMap.get(r.roleId);
+        if (!id) return null;
+
+        return {
+          role: id,
+          position: r.position,
+        };
+      })
+      .filter(Boolean) as { role: string; position: number }[];
+
     await guild.roles.setPositions(positions).catch(() => {});
   }
 
-  private async restoreCategories(guild: Guild, channels: any[]): Promise<void> {
-    const categories = channels.filter(c => c.type === ChannelType.GuildCategory);
+  private async restoreCategories(
+    guild: Guild,
+    channels: any[],
+    categoryMap: Map<string, string>,
+  ): Promise<void> {
+    const categories = channels.filter(
+      (c) => c.type === ChannelType.GuildCategory,
+    );
 
-    for (const cat of categories) {
-      if (guild.channels.cache.some(c => c.name === cat.name && c.type === ChannelType.GuildCategory)) continue;
+    for (const backupCategory of categories) {
+      let category = guild.channels.cache.find(
+        (c) =>
+          c.type === ChannelType.GuildCategory &&
+          c.name === backupCategory.name,
+      );
 
-      await guild.channels.create({
-        name: cat.name,
-        type: ChannelType.GuildCategory,
-        position: cat.position,
-      }).catch(() => {});
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!category) {
+        try {
+          category = await guild.channels.create({
+            name: backupCategory.name,
+            type: ChannelType.GuildCategory,
+            position: backupCategory.position,
+          });
+        } catch (error) {
+          logger.error(
+            `[Restore] Failed to create category ${backupCategory.name}`,
+            error,
+          );
+          continue;
+        }
+      }
+
+      categoryMap.set(
+        backupCategory.channelId,
+        category.id,
+      );
     }
   }
 
-  private async restoreChannels(guild: Guild, channels: any[]): Promise<void> {
-    const normalChannels = channels.filter(c => c.type !== ChannelType.GuildCategory);
+  private async restoreChannels(
+    guild: Guild,
+    channels: any[],
+    roleMap: Map<string, string>,
+    categoryMap: Map<string, string>,
+  ): Promise<void> {
+    const normalChannels = channels.filter(
+      (c) => c.type !== ChannelType.GuildCategory,
+    );
 
-    for (const chan of normalChannels) {
-      if (guild.channels.cache.some(c => c.name === chan.name && c.type === chan.type)) continue;
-
-      const parent = chan.parentId 
-        ? guild.channels.cache.find(c => c.name === channels.find(bc => bc.channelId === chan.parentId)?.name)
-        : null;
+    for (const backupChannel of normalChannels) {
+      if (
+        guild.channels.cache.some(
+          (c) =>
+            c.type === backupChannel.type &&
+            c.name === backupChannel.name,
+        )
+      ) {
+        continue;
+      }
 
       try {
         const created = await guild.channels.create({
-          name: chan.name,
-          type: chan.type,
-          parent: parent?.id,
-          topic: chan.topic,
-          nsfw: chan.nsfw,
-          position: chan.position,
+          name: backupChannel.name,
+          type: backupChannel.type,
+          parent: backupChannel.parentId
+            ? categoryMap.get(backupChannel.parentId)
+            : undefined,
+          topic: backupChannel.topic,
+          nsfw: backupChannel.nsfw,
+          position: backupChannel.position,
         });
 
-        if (chan.overwrites?.length) {
+        if (backupChannel.overwrites?.length) {
           await created.permissionOverwrites.set(
-            chan.overwrites.map((o: any) => ({
-              id: o.targetId,
-              type: o.type === 0 ? OverwriteType.Role : OverwriteType.Member,
-              allow: new PermissionsBitField(BigInt(o.allow)),
-              deny: new PermissionsBitField(BigInt(o.deny)),
-            }))
-          ).catch(() => {});
+            backupChannel.overwrites.map((o: any) => ({
+              id: roleMap.get(o.targetId) ?? o.targetId,
+              type:
+                o.type === 0
+                  ? OverwriteType.Role
+                  : OverwriteType.Member,
+              allow: new PermissionsBitField(
+                BigInt(o.allow),
+              ),
+              deny: new PermissionsBitField(
+                BigInt(o.deny),
+              ),
+            })),
+          );
         }
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (e) { logger.error(`[Restore] Channel create failed: ${chan.name}`, e); }
+      } catch (error) {
+        logger.error(
+          `[Restore] Failed to create channel ${backupChannel.name}`,
+          error,
+        );
+      }
     }
   }
 }

@@ -4,38 +4,45 @@ import {
   SlashCommandOptionsOnlyBuilder,
 } from "discord.js";
 
+/**
+ * Command permission levels.
+ */
 export enum Permission {
-  GLOBAL_OWNER = "GLOBAL_OWNER",
-
-  SERVER_OWNER = "SERVER_OWNER",
-
-  ADMIN = "ADMIN",
-
-  MODERATOR = "MODERATOR",
-
-  ANTINUKE = "ANTINUKE",
-
-  CONFIG = "CONFIG",
+  USER = "USER",
 
   AI = "AI",
 
+  MODERATOR = "MODERATOR",
+
+  ADMIN = "ADMIN",
+
+  CONFIG = "CONFIG",
+
+  ANTINUKE = "ANTINUKE",
+
   RECOVERY = "RECOVERY",
 
-  USER = "USER",
+  SERVER_OWNER = "SERVER_OWNER",
+
+  GLOBAL_OWNER = "GLOBAL_OWNER",
 }
 
+/**
+ * Base command interface.
+ */
 export interface Command {
-  data:
+  readonly data:
     | SlashCommandBuilder
     | SlashCommandOptionsOnlyBuilder;
 
-  permissions: Permission[];
+  readonly permissions: readonly Permission[];
 
-  guildOnly?: boolean;
+  readonly guildOnly?: boolean;
 
-  ownerOnly?: boolean;
-
-  cooldown?: number;
+  /**
+   * Cooldown in seconds.
+   */
+  readonly cooldown?: number;
 
   execute(
     interaction: ChatInputCommandInteraction,

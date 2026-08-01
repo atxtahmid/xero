@@ -1,7 +1,6 @@
 import { PunishmentType } from "@prisma/client";
 import db from "./database.js";
 
-// Whitelist of fields allowed to be updated via setThreshold
 const ALLOWED_THRESHOLD_FIELDS = [
   "botAddThreshold",
   "massBanThreshold",
@@ -14,12 +13,11 @@ const ALLOWED_THRESHOLD_FIELDS = [
   "roleUpdateThreshold",
   "webhookCreateThreshold",
   "serverUpdateThreshold",
-];
+] as const;
+
+export type ThresholdField = (typeof ALLOWED_THRESHOLD_FIELDS)[number];
 
 class AntiNukeSettingsService {
-  /**
-   * Ensures both the Guild and the GuildSettings (for logs) exist.
-   */
   private async ensureGuildSetup(guildId: string): Promise<void> {
     await db.guild.upsert({
       where: { id: guildId },
@@ -27,7 +25,6 @@ class AntiNukeSettingsService {
       create: { id: guildId },
     });
 
-    // Logging fails if GuildSettings doesn't exist
     await db.guildSettings.upsert({
       where: { guildId },
       update: {},
@@ -40,8 +37,13 @@ class AntiNukeSettingsService {
 
     return db.antiNukeSettings.upsert({
       where: { guildId },
-      update: { enabled: true },
-      create: { guildId, enabled: true },
+      update: {
+        enabled: true,
+      },
+      create: {
+        guildId,
+        enabled: true,
+      },
     });
   }
 
@@ -50,14 +52,16 @@ class AntiNukeSettingsService {
 
     return db.antiNukeSettings.upsert({
       where: { guildId },
-      update: { enabled: false },
-      create: { guildId, enabled: false },
+      update: {
+        enabled: false,
+      },
+      create: {
+        guildId,
+        enabled: false,
+      },
     });
   }
 
-  /**
-   * Fetches settings and includes logging configuration for a complete snapshot.
-   */
   async get(guildId: string) {
     return db.antiNukeSettings.findUnique({
       where: { guildId },
@@ -65,20 +69,21 @@ class AntiNukeSettingsService {
         guild: {
           select: {
             settings: {
-              select: { antiNukeLogChannelId: true }
-            }
-          }
-        }
-      }
+              select: {
+                antiNukeLogChannelId: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
   async setThreshold(
     guildId: string,
-    field: string,
+    field: ThresholdField,
     value: number,
   ) {
-    // 1. Critical: Field Injection Protection
     if (!ALLOWED_THRESHOLD_FIELDS.includes(field)) {
       throw new Error(`Invalid Anti-Nuke field: ${field}`);
     }
@@ -87,7 +92,9 @@ class AntiNukeSettingsService {
 
     return db.antiNukeSettings.upsert({
       where: { guildId },
-      update: { [field]: value },
+      update: {
+        [field]: value,
+      },
       create: {
         guildId,
         enabled: true,
@@ -104,7 +111,9 @@ class AntiNukeSettingsService {
 
     return db.antiNukeSettings.upsert({
       where: { guildId },
-      update: { punishment },
+      update: {
+        punishment,
+      },
       create: {
         guildId,
         enabled: true,

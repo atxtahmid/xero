@@ -1,45 +1,82 @@
 import db from "./database.js";
 
 class AntiNukeCoOwnerService {
-  private readonly MAX_CO_OWNERS = 10;
+  private static readonly MAX_CO_OWNERS = 10;
 
   async add(guildId: string, userId: string) {
-    const count = await db.antiNukeCoOwner.count({
-      where: { guildId },
-    });
+    return db.$transaction(async (tx) => {
+      const existing = await tx.antiNukeCoOwner.findUnique({
+        where: {
+          guildId_userId: { guildId, userId },
+        },
+        select: { id: true },
+      });
 
-    if (count >= this.MAX_CO_OWNERS) {
-      throw new Error(`Maximum limit of ${this.MAX_CO_OWNERS} Co-Owners reached.`);
-    }
+      if (existing) {
+        return existing;
+      }
 
-    return db.antiNukeCoOwner.upsert({
-      where: {
-        guildId_userId: { guildId, userId },
-      },
-      update: {},
-      create: { guildId, userId },
+      const count = await tx.antiNukeCoOwner.count({
+        where: { guildId },
+      });
+
+      if (count >= AntiNukeCoOwnerService.MAX_CO_OWNERS) {
+        throw new Error(
+          `Maximum limit of ${AntiNukeCoOwnerService.MAX_CO_OWNERS} Co-Owners reached.`,
+        );
+      }
+
+      return tx.antiNukeCoOwner.create({
+        data: {
+          guildId,
+          userId,
+        },
+      });
     });
   }
 
   async remove(guildId: string, userId: string) {
-    return db.antiNukeCoOwner.deleteMany({
-      where: { guildId, userId },
+    const result = await db.antiNukeCoOwner.deleteMany({
+      where: {
+        guildId,
+        userId,
+      },
     });
+
+    if (result.count === 0) {
+      throw new Error("User is not a Co-Owner.");
+    }
+
+    return result;
   }
 
   async getAll(guildId: string) {
     return db.antiNukeCoOwner.findMany({
-      where: { guildId },
-      orderBy: { createdAt: "asc" },
+      where: {
+        guildId,
+      },
+      select: {
+        guildId: true,
+        userId: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
     });
   }
 
   async isCoOwner(guildId: string, userId: string) {
     const record = await db.antiNukeCoOwner.findUnique({
       where: {
-        guildId_userId: { guildId, userId },
+        guildId_userId: {
+          guildId,
+          userId,
+        },
       },
-      select: { id: true }, // Optimization
+      select: {
+        id: true,
+      },
     });
 
     return record !== null;

@@ -4,9 +4,11 @@ import {
   TextChannel,
   User,
   ColorResolvable,
+  PermissionFlagsBits,
 } from "discord.js";
 
 import db from "./database.js";
+import logger from "./logger.js";
 
 export interface ModLogOptions {
   guild: Guild;
@@ -20,32 +22,55 @@ export interface ModLogOptions {
 
 function getActionColor(action: string): ColorResolvable {
   const a = action.toLowerCase();
-  if (a.includes("ban")) return 0xed4245; // Red
-  if (a.includes("kick")) return 0xfaa61a; // Orange
-  if (a.includes("timeout")) return 0xfee75c; // Yellow
-  if (a.includes("warn")) return 0x5865f2; // Blue
-  if (a.includes("unban") || a.includes("removed")) return 0x57f287; // Green
-  return 0x95a5a6; // Gray
+
+  if (a.includes("ban")) return 0xed4245;
+  if (a.includes("kick")) return 0xfaa61a;
+  if (a.includes("timeout")) return 0xfee75c;
+  if (a.includes("warn")) return 0x5865f2;
+  if (a.includes("unban") || a.includes("removed")) return 0x57f287;
+
+  return 0x95a5a6;
 }
 
-export async function sendModLog(options: ModLogOptions) {
+export async function sendModLog(options: ModLogOptions): Promise<void> {
   try {
     const settings = await db.guildSettings.findUnique({
-      where: { guildId: options.guild.id },
+      where: {
+        guildId: options.guild.id,
+      },
     });
 
     if (!settings?.logChannelId) return;
 
-    const channel = await options.guild.channels.fetch(settings.logChannelId).catch(() => null);
+    const channel = await options.guild.channels
+      .fetch(settings.logChannelId)
+      .catch(() => null);
 
-    if (!channel || !(channel instanceof TextChannel)) {
-      // Optional: Clean up DB if channel is confirmed deleted
+    if (!(channel instanceof TextChannel)) {
       return;
     }
+
+    const me = options.guild.members.me;
+
+    if (
+      !me ||
+      !channel.permissionsFor(me)?.has([
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.EmbedLinks,
+      ])
+    ) {
+      return;
+    }
+
+    const reason =
+      options.reason.trim() || "No reason provided.";
 
     const embed = new EmbedBuilder()
       .setColor(getActionColor(options.action))
       .setTitle(`Moderation Log | ${options.action}`)
+      .setThumbnail(options.target.displayAvatarURL())
+      .setDescription(`**Reason:** ${reason}`)
       .addFields(
         {
           name: "🆔 Case ID",
@@ -61,9 +86,8 @@ export async function sendModLog(options: ModLogOptions) {
           name: "🛡️ Moderator",
           value: `${options.moderator.tag}\n(\`${options.moderator.id}\`)`,
           inline: true,
-        }
+        },
       )
-      .setDescription(`**Reason:** ${options.reason}`)
       .setTimestamp();
 
     if (options.duration) {
@@ -74,8 +98,17 @@ export async function sendModLog(options: ModLogOptions) {
       });
     }
 
-    await channel.send({ embeds: [embed] });
-  } catch (error) {
-    console.error("[ModLog Service] Failed to send log:", error);
+    await channel.send({
+      embeds: [embed],
+    });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      logger.error("[ModLog Service] Failed to send log", {
+        message: error.message,
+        stack: error.stack,
+      });
+    } else {
+      logger.error("[ModLog Service] Failed to send log", error);
+    }
   }
 }

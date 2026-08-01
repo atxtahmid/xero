@@ -3,21 +3,27 @@ import {
   TextChannel,
 } from "discord.js";
 
-export async function isChannelLocked(
+/**
+ * Returns whether the channel is locked for @everyone.
+ */
+export function isChannelLocked(
   channel: TextChannel,
-): Promise<boolean> {
+): boolean {
+  const everyoneId = channel.guild.roles.everyone.id;
+
   const overwrite =
     channel.permissionOverwrites.cache.get(
-      channel.guild.roles.everyone.id,
+      everyoneId,
     );
 
-  return (
-    overwrite?.deny.has(
-      PermissionFlagsBits.SendMessages,
-    ) ?? false
-  );
+  return overwrite?.deny.has(
+    PermissionFlagsBits.SendMessages,
+  ) ?? false;
 }
 
+/**
+ * Locks the channel by preventing @everyone from sending messages.
+ */
 export async function lockChannel(
   channel: TextChannel,
 ): Promise<void> {
@@ -29,13 +35,16 @@ export async function lockChannel(
   );
 }
 
+/**
+ * Unlocks the channel by allowing @everyone to send messages.
+ */
 export async function unlockChannel(
   channel: TextChannel,
 ): Promise<void> {
   await channel.permissionOverwrites.edit(
     channel.guild.roles.everyone,
     {
-      SendMessages: null,
+      SendMessages: true,
     },
   );
 }

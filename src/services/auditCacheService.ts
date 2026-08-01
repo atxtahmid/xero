@@ -7,18 +7,22 @@ interface CacheEntry {
 }
 
 class AuditCacheService {
+  private static readonly DEFAULT_TTL = 10_000;
+
   private readonly cache = new Map<string, CacheEntry>();
 
   constructor() {
-    // Cleanup Interval: Every 5 minutes, wipe expired entries to prevent memory stagnation
-    setInterval(() => {
+    const timer = setInterval(() => {
       const now = Date.now();
+
       for (const [key, entry] of this.cache.entries()) {
         if (now > entry.expiresAt) {
           this.cache.delete(key);
         }
       }
     }, 1000 * 60 * 5);
+
+    timer.unref();
   }
 
   private makeKey(guildId: string, action: AntiNukeAction): string {
@@ -29,7 +33,9 @@ class AuditCacheService {
     const key = this.makeKey(guildId, action);
     const entry = this.cache.get(key);
 
-    if (!entry) return null;
+    if (!entry) {
+      return null;
+    }
 
     if (Date.now() > entry.expiresAt) {
       this.cache.delete(key);
@@ -43,13 +49,18 @@ class AuditCacheService {
     guildId: string,
     action: AntiNukeAction,
     executor: User,
-    ttl = 10_000, // Increased to 10s for production reliability
+    ttl = AuditCacheService.DEFAULT_TTL,
   ): void {
     const key = this.makeKey(guildId, action);
+
     this.cache.set(key, {
       executor,
       expiresAt: Date.now() + ttl,
     });
+  }
+
+  delete(guildId: string, action: AntiNukeAction): void {
+    this.cache.delete(this.makeKey(guildId, action));
   }
 
   clear(): void {

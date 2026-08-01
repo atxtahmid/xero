@@ -10,7 +10,36 @@ import type { Event } from "../../types/Event.js";
 import { hasPermission } from "../../utils/permissions.js";
 import logger from "../../services/logger.js";
 
+import ticketCreateButton from "../tickets/ticketCreateButton.js";
+import ticketClaimButton from "../tickets/ticketClaimButton.js";
+import ticketUnclaimButton from "../tickets/ticketUnclaimButton.js";
+import ticketLockButton from "../tickets/ticketLockButton.js";
+import ticketUnlockButton from "../tickets/ticketUnlockButton.js";
+import ticketCloseButton from "../tickets/ticketCloseButton.js";
+import ticketDeleteButton from "../tickets/ticketDeleteButton.js";
+import ticketReopenButton from "../tickets/ticketReopenButton.js";
+
 const cooldowns = new Collection<string, Collection<string, number>>();
+
+type ButtonHandler = (interaction: ButtonInteraction) => Promise<void>;
+
+/**
+ * Maps a button's customId to its handler.
+ *
+ * These handlers already existed in `events/tickets/*` but were never
+ * wired up anywhere — the button branch below used to be an empty
+ * placeholder, so every ticket button silently did nothing when clicked.
+ */
+const buttonHandlers: Record<string, ButtonHandler> = {
+  "ticket:create": ticketCreateButton,
+  "ticket:claim": ticketClaimButton,
+  "ticket:unclaim": ticketUnclaimButton,
+  "ticket:lock": ticketLockButton,
+  "ticket:unlock": ticketUnlockButton,
+  "ticket:close": ticketCloseButton,
+  "ticket:delete": ticketDeleteButton,
+  "ticket:reopen": ticketReopenButton,
+};
 
 const event: Event = {
   name: Events.InteractionCreate,
@@ -19,46 +48,121 @@ const event: Event = {
     if (interaction.isChatInputCommand()) {
       await handleSlashCommand(interaction);
     } else if (interaction.isButton()) {
-      // Button handling logic...
+      await handleButton(interaction);
     }
   },
 };
 
-async function handleSlashCommand(interaction: ChatInputCommandInteraction): Promise<void> {
-  const command = interaction.client.commands.get(interaction.commandName);
-  if (!command) return;
+async function handleButton(
+  interaction: ButtonInteraction,
+): Promise<void> {
+  const handler = buttonHandlers[interaction.customId];
 
-  // 1. Permission check
-  const permitted = await hasPermission(interaction, command.permissions);
-  if (!permitted) {
-    await interaction.reply({ content: "❌ You don't have permission.", ephemeral: true });
+  if (!handler) {
     return;
   }
 
-  // 2. Cooldown check
-  if (!cooldowns.has(command.data.name)) cooldowns.set(command.data.name, new Collection());
-  const now = Date.now();
+  try {
+    await handler(interaction);
+  } catch (error) {
+    logger.error(
+      `[Button Error] ${interaction.customId}:`,
+      error,
+    );
+
+    const response = {
+      content: "❌ Something went wrong handling that button.",
+      ephemeral: true,
+    };
+
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp(response);
+      } else {
+        await interaction.reply(response);
+      }
+    } catch {
+      // The interaction likely expired; nothing more we can do.
+    }
+  }
+}
+
+async function handleSlashCommand(
+  interaction: ChatInputCommandInteraction,
+): Promise<void> {
+  const command = interaction.client.commands.get(
+    interaction.commandName,
+  );
+
+  if (!command) return;
+
+  // Permission check
+  const permitted = await hasPermission(
+    interaction,
+    [...command.permissions],
+  );
+
+  if (!permitted) {
+    await interaction.reply({
+      content: "❌ You don't have permission.",
+      ephemeral: true,
+    });
+
+    return;
+  }
+
+  // Cooldown
+  if (!cooldowns.has(command.data.name)) {
+    cooldowns.set(
+      command.data.name,
+      new Collection<string, number>(),
+    );
+  }
+
   const timestamps = cooldowns.get(command.data.name)!;
+
+  const now = Date.now();
   const cooldownAmount = (command.cooldown ?? 3) * 1000;
 
   if (timestamps.has(interaction.user.id)) {
-    const expirationTime = timestamps.get(interaction.user.id)! + cooldownAmount;
+    const expirationTime =
+      timestamps.get(interaction.user.id)! + cooldownAmount;
+
     if (now < expirationTime) {
-      await interaction.reply({ content: "⚠️ Cooldown active.", ephemeral: true });
+      await interaction.reply({
+        content: "⚠️ Cooldown active.",
+        ephemeral: true,
+      });
+
       return;
     }
   }
-  timestamps.set(interaction.user.id, now);
-  setTimeout(() => timestamps.delete(interaction.user.id), cooldownAmount);
 
-  // 3. Execution
+  timestamps.set(interaction.user.id, now);
+
+  setTimeout(() => {
+    timestamps.delete(interaction.user.id);
+  }, cooldownAmount);
+
+  // Execute command
   try {
     await command.execute(interaction);
   } catch (error) {
-    logger.error(`[Command Error] ${interaction.commandName}:`, error);
-    const msg = { content: "❌ Execution failed.", ephemeral: true };
-    if (interaction.deferred || interaction.replied) await interaction.followUp(msg);
-    else await interaction.reply(msg);
+    logger.error(
+      `[Command Error] ${interaction.commandName}:`,
+      error,
+    );
+
+    const response = {
+      content: "❌ Execution failed.",
+      ephemeral: true,
+    };
+
+    if (interaction.deferred || interaction.replied) {
+      await interaction.followUp(response);
+    } else {
+      await interaction.reply(response);
+    }
   }
 }
 

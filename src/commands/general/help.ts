@@ -4,7 +4,10 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import { Permission, type Command } from "../../types/Command.js";
+import {
+  Permission,
+  type Command,
+} from "../../types/Command.js";
 import { hasPermission } from "../../utils/permissions.js";
 
 const command: Command = {
@@ -19,42 +22,57 @@ const command: Command = {
   async execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const commands = interaction.client.commands;
     const categories: Record<string, string[]> = {};
 
-    // Group and filter commands dynamically
-    for (const [name, cmd] of commands) {
-      // Security Check: Can this specific user actually run this command?
-      const allowed = await hasPermission(interaction, cmd.permissions);
+    for (const [name, cmd] of interaction.client.commands) {
+      const allowed = await hasPermission(
+        interaction,
+        [...cmd.permissions], // Fixed readonly -> mutable array
+      );
+
       if (!allowed) continue;
 
-      // Extract category from permissions or logic
       let category = "General";
-      if (cmd.permissions.includes(Permission.MODERATOR)) category = "Moderation";
-      if (cmd.permissions.includes(Permission.ADMIN)) category = "Admin";
-      if (cmd.permissions.includes(Permission.ANTINUKE)) category = "Security";
-      if (cmd.permissions.includes(Permission.SERVER_OWNER)) category = "Owner";
 
-      if (!categories[category]) categories[category] = [];
-      categories[category].push(`\`/${name}\``);
+      if (cmd.permissions.includes(Permission.SERVER_OWNER)) {
+        category = "Owner";
+      } else if (cmd.permissions.includes(Permission.ANTINUKE)) {
+        category = "Security";
+      } else if (cmd.permissions.includes(Permission.ADMIN)) {
+        category = "Admin";
+      } else if (cmd.permissions.includes(Permission.MODERATOR)) {
+        category = "Moderation";
+      }
+
+      if (!categories[category]) {
+        categories[category] = [];
+      }
+
+      categories[category].push(`/${name}`);
     }
 
     const embed = new EmbedBuilder()
       .setTitle("📖 Xero Command Directory")
       .setColor(0x57f287)
-      .setDescription("Here are the commands you currently have access to use:")
+      .setDescription(
+        "Here are the commands you currently have access to use.",
+      )
       .setTimestamp()
-      .setFooter({ text: "Xero Security & Support" });
+      .setFooter({
+        text: "Xero Security & Support",
+      });
 
-    for (const [category, cmds] of Object.entries(categories)) {
+    for (const category of Object.keys(categories).sort()) {
       embed.addFields({
         name: category,
-        value: cmds.sort().join(", "),
+        value: categories[category].sort().join(", "),
         inline: false,
       });
     }
 
-    await interaction.editReply({ embeds: [embed] });
+    await interaction.editReply({
+      embeds: [embed],
+    });
   },
 };
 

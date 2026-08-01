@@ -1,23 +1,25 @@
-import { GeminiContent } from "./aiContextService.js";
+import type { GeminiContent } from "./aiContextService.js";
 
-export type AIRequestPayload = {
+export interface AIRequestPayload {
   systemInstruction: string;
   contents: GeminiContent[];
-};
+}
 
 class PromptBuilder {
-  build(messages: GeminiContent[]): AIRequestPayload {
-    const systemPrompt = `
+  private readonly SYSTEM_PROMPT = `
 You are Xero, an advanced Discord AI assistant.
+
 Rules:
 - Be helpful, accurate, and concise.
 - Use Markdown (bold, lists, code blocks) for readability.
-- If you don't know a fact, say so. Do not invent information.
+- If you don't know something, clearly say so.
+- Never invent facts.
 - Maintain a professional yet friendly tone.
 `;
 
+  build(messages: GeminiContent[]): AIRequestPayload {
     return {
-      systemInstruction: systemPrompt.trim(),
+      systemInstruction: this.SYSTEM_PROMPT.trim(),
       contents: messages,
     };
   }

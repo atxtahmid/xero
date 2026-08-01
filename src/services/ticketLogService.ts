@@ -1,30 +1,47 @@
 import {
+  ColorResolvable,
   EmbedBuilder,
   Guild,
   TextChannel,
   User,
-  ColorResolvable,
 } from "discord.js";
 
+import logger from "./logger.js";
 import ticketService from "./ticketService.js";
 
 class TicketLogService {
+  private static readonly FOOTER = "Xero Ticket System";
+
   private async resolveLogChannel(
     guild: Guild,
     ticketChannelId: string,
   ): Promise<TextChannel | null> {
     try {
       const ticket = await ticketService.getByChannel(ticketChannelId);
-      if (!ticket || !ticket.panel.logChannelId) return null;
 
-      const logChannel = await guild.channels.fetch(ticket.panel.logChannelId).catch(() => null);
-      
-      if (logChannel instanceof TextChannel) {
-        return logChannel;
+      if (!ticket || !ticket.panel.logChannelId) {
+        return null;
       }
-      return null;
+
+      const logChannel = await guild.channels
+        .fetch(ticket.panel.logChannelId)
+        .catch(() => null);
+
+      if (!(logChannel instanceof TextChannel)) {
+        logger.warn(
+          `[TicketLog] Invalid log channel for ticket ${ticketChannelId}.`,
+        );
+
+        return null;
+      }
+
+      return logChannel;
     } catch (error) {
-      console.error("[TicketLog] Error resolving log channel:", error);
+      logger.error(
+        `[TicketLog] Failed to resolve log channel for ${ticketChannelId}:`,
+        error,
+      );
+
       return null;
     }
   }
@@ -32,15 +49,26 @@ class TicketLogService {
   private async send(
     guild: Guild,
     ticketChannelId: string,
-    embed: EmbedBuilder
+    embed: EmbedBuilder,
   ): Promise<void> {
-    const channel = await this.resolveLogChannel(guild, ticketChannelId);
-    if (!channel) return;
+    const channel = await this.resolveLogChannel(
+      guild,
+      ticketChannelId,
+    );
+
+    if (!channel) {
+      return;
+    }
 
     try {
-      await channel.send({ embeds: [embed] });
+      await channel.send({
+        embeds: [embed],
+      });
     } catch (error) {
-      console.error(`[TicketLog] Failed to send log to ${channel.id}:`, error);
+      logger.error(
+        `[TicketLog] Failed to send log to ${channel.id}:`,
+        error,
+      );
     }
   }
 
@@ -49,57 +77,165 @@ class TicketLogService {
     title: string,
     ticketChannelId: string,
     user: User,
-    staff?: User
+    staff?: User,
   ): EmbedBuilder {
     const embed = new EmbedBuilder()
       .setColor(color)
       .setTitle(`LOG: ${title}`)
       .addFields(
-        { name: "Ticket", value: `<#${ticketChannelId}> (\`${ticketChannelId}\`)`, inline: false },
-        { name: "User", value: `${user.tag} (\`${user.id}\`)`, inline: true }
+        {
+          name: "Ticket",
+          value: `<#${ticketChannelId}> (\`${ticketChannelId}\`)`,
+        },
+        {
+          name: "User",
+          value: `${user.tag} (\`${user.id}\`)`,
+          inline: true,
+        },
       )
+      .setFooter({
+        text: TicketLogService.FOOTER,
+      })
       .setTimestamp();
 
     if (staff) {
-      embed.addFields({ name: "Staff", value: `${staff.tag} (\`${staff.id}\`)`, inline: true });
+      embed.addFields({
+        name: "Staff",
+        value: `${staff.tag} (\`${staff.id}\`)`,
+        inline: true,
+      });
     }
 
     return embed;
   }
 
-  async logCreate(guild: Guild, channelId: string, user: User) {
-    const embed = this.buildBaseEmbed(0x57F287, "Ticket Created", channelId, user);
+  private async log(
+    guild: Guild,
+    channelId: string,
+    color: ColorResolvable,
+    title: string,
+    user: User,
+    staff?: User,
+  ): Promise<void> {
+    const embed = this.buildBaseEmbed(
+      color,
+      title,
+      channelId,
+      user,
+      staff,
+    );
+
     await this.send(guild, channelId, embed);
   }
 
-  async logClaim(guild: Guild, channelId: string, user: User, staff: User) {
-    const embed = this.buildBaseEmbed(0x5865F2, "Ticket Claimed", channelId, user, staff);
-    await this.send(guild, channelId, embed);
+  async logCreate(
+    guild: Guild,
+    channelId: string,
+    user: User,
+  ) {
+    await this.log(
+      guild,
+      channelId,
+      0x57f287,
+      "Ticket Created",
+      user,
+    );
   }
 
-  async logUnclaim(guild: Guild, channelId: string, user: User, staff: User) {
-    const embed = this.buildBaseEmbed(0xFAA61A, "Ticket Unclaimed", channelId, user, staff);
-    await this.send(guild, channelId, embed);
+  async logClaim(
+    guild: Guild,
+    channelId: string,
+    user: User,
+    staff: User,
+  ) {
+    await this.log(
+      guild,
+      channelId,
+      0x5865f2,
+      "Ticket Claimed",
+      user,
+      staff,
+    );
   }
 
-  async logLock(guild: Guild, channelId: string, user: User, staff: User) {
-    const embed = this.buildBaseEmbed(0xED4245, "Ticket Locked", channelId, user, staff);
-    await this.send(guild, channelId, embed);
+  async logUnclaim(
+    guild: Guild,
+    channelId: string,
+    user: User,
+    staff: User,
+  ) {
+    await this.log(
+      guild,
+      channelId,
+      0xfaa61a,
+      "Ticket Unclaimed",
+      user,
+      staff,
+    );
   }
 
-  async logUnlock(guild: Guild, channelId: string, user: User, staff: User) {
-    const embed = this.buildBaseEmbed(0x57F287, "Ticket Unlocked", channelId, user, staff);
-    await this.send(guild, channelId, embed);
+  async logLock(
+    guild: Guild,
+    channelId: string,
+    user: User,
+    staff: User,
+  ) {
+    await this.log(
+      guild,
+      channelId,
+      0xed4245,
+      "Ticket Locked",
+      user,
+      staff,
+    );
   }
 
-  async logClose(guild: Guild, channelId: string, user: User, staff: User) {
-    const embed = this.buildBaseEmbed(0xED4245, "Ticket Closed", channelId, user, staff);
-    await this.send(guild, channelId, embed);
+  async logUnlock(
+    guild: Guild,
+    channelId: string,
+    user: User,
+    staff: User,
+  ) {
+    await this.log(
+      guild,
+      channelId,
+      0x57f287,
+      "Ticket Unlocked",
+      user,
+      staff,
+    );
   }
 
-  async logDelete(guild: Guild, channelId: string, user: User, staff: User) {
-    const embed = this.buildBaseEmbed(0x2F3136, "Ticket Deleted", channelId, user, staff);
-    await this.send(guild, channelId, embed);
+  async logClose(
+    guild: Guild,
+    channelId: string,
+    user: User,
+    staff: User,
+  ) {
+    await this.log(
+      guild,
+      channelId,
+      0xed4245,
+      "Ticket Closed",
+      user,
+      staff,
+    );
+  }
+
+  async logDelete(
+    guild: Guild,
+    channelId: string,
+    user: User,
+    staff: User,
+  ) {
+    await this.log(
+      guild,
+      channelId,
+      0x2f3136,
+      "Ticket Deleted",
+      user,
+      staff,
+    );
   }
 }
 

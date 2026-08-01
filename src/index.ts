@@ -1,35 +1,31 @@
 import {
   Client,
   Collection,
+  Events,
   GatewayIntentBits,
   Partials,
-  Events,
 } from "discord.js";
 
 import config from "./config/index.js";
-import logger from "./services/logger.js";
-import type { Command } from "./types/Command.js";
 import { loadCommands } from "./handlers/commandHandler.js";
 import { loadEvents } from "./handlers/eventHandler.js";
 import backupScheduler from "./services/backupScheduler.js";
-
-// 1. Critical: Process Error Handling
-// Prevents the bot from entering a crash loop on Railway due to unhandled async errors.
-process.on("unhandledRejection", (reason) => {
-  logger.error(`Unhandled Promise Rejection: ${reason}`);
-});
-
-process.on("uncaughtException", (error) => {
-  logger.error(`Uncaught Exception: ${error.message}`);
-  logger.error(error.stack);
-  // Optional: Graceful shutdown if error is severe
-});
+import logger from "./services/logger.js";
+import type { Command } from "./types/Command.js";
 
 declare module "discord.js" {
   interface Client {
     commands: Collection<string, Command>;
   }
 }
+
+process.on("unhandledRejection", (reason) => {
+  logger.error("Unhandled Promise Rejection:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught Exception:", error);
+});
 
 const client = new Client({
   intents: [
@@ -50,26 +46,72 @@ const client = new Client({
 
 client.commands = new Collection<string, Command>();
 
-// 2. Critical: Backup Scheduler Integration
 client.once(Events.ClientReady, async (readyClient) => {
+  logger.info(
+    `Logged in as ${readyClient.user.tag}`,
+  );
+
   try {
-    // Start the automatic backup cycle once the client is ready
     await backupScheduler.start(readyClient);
-    logger.info("Background services (Backup Scheduler) started.");
+
+    logger.info(
+      "Background services started.",
+    );
   } catch (error) {
-    logger.error("Failed to initialize background services:", error);
+    logger.error(
+      "Failed to start background services:",
+      error,
+    );
   }
 });
 
-try {
-  // Load local command and event handlers
-  await loadCommands(client);
-  await loadEvents(client);
+async function shutdown(
+  signal: string,
+): Promise<void> {
+  logger.info(
+    `Received ${signal}. Shutting down...`,
+  );
 
-  await client.login(config.discord.token);
+  try {
+    backupScheduler.stop();
 
-  logger.info("Bot logged in successfully.");
-} catch (error) {
-  logger.error(`Startup failed: ${error}`);
-  process.exit(1);
+    client.destroy();
+
+    logger.info("Shutdown complete.");
+  } catch (error) {
+    logger.error(
+      "Shutdown failed:",
+      error,
+    );
+  } finally {
+    process.exit(0);
+  }
 }
+
+process.once("SIGINT", () => {
+  void shutdown("SIGINT");
+});
+
+process.once("SIGTERM", () => {
+  void shutdown("SIGTERM");
+});
+
+async function start(): Promise<void> {
+  try {
+    await loadCommands(client);
+    await loadEvents(client);
+
+    await client.login(
+      config.discord.token,
+    );
+  } catch (error) {
+    logger.error(
+      "Startup failed:",
+      error,
+    );
+
+    process.exit(1);
+  }
+}
+
+void start();

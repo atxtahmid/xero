@@ -5,8 +5,12 @@ import {
   TextChannel,
 } from "discord.js";
 
-import type { Command } from "../../types/Command.js";
+import logger from "../../services/logger.js";
+import ticketLogService from "../../services/ticketLogService.js";
 import ticketService from "../../services/ticketService.js";
+import type { Command } from "../../types/Command.js";
+
+const DELETE_DELAY = 5000;
 
 const command: Command = {
   guildOnly: true,
@@ -17,59 +21,117 @@ const command: Command = {
     .setName("delete")
     .setDescription("Delete the current ticket."),
 
-  async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+  async execute(
+    interaction: ChatInputCommandInteraction,
+  ): Promise<void> {
     const { guild, channel } = interaction;
 
-    // FIX: Narrowing the channel type to allow .send()
     if (!guild || !(channel instanceof TextChannel)) {
-      await interaction.reply({ 
-        content: "❌ This command can only be used in a ticket text channel.", 
-        ephemeral: true 
+      await interaction.reply({
+        content:
+          "❌ This command can only be used inside a ticket channel.",
+        ephemeral: true,
       });
       return;
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({
+      ephemeral: true,
+    });
 
-    const ticket = await ticketService.getByChannel(interaction.channelId);
+    const ticket = await ticketService.getByChannel(
+      interaction.channelId,
+    );
 
     if (!ticket) {
-      await interaction.editReply({ content: "❌ This channel is not a registered ticket." });
+      await interaction.editReply({
+        content:
+          "❌ This channel is not a registered ticket.",
+      });
       return;
     }
 
-    // Permission Check: ManageChannels OR Support Role
-    const isStaff = 
-      interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels) ||
-      (ticket.panel.supportRoleId && (interaction.member?.roles as any).cache.has(ticket.panel.supportRoleId));
+    // Fetch a real GuildMember to avoid union type issues
+    const member = await guild.members
+      .fetch(interaction.user.id)
+      .catch(() => null);
+
+    if (!member) {
+      await interaction.editReply({
+        content:
+          "❌ Unable to verify your permissions.",
+      });
+      return;
+    }
+
+    const isSupport =
+      !!ticket.panel.supportRoleId &&
+      member.roles.cache.has(
+        ticket.panel.supportRoleId,
+      );
+
+    const isStaff =
+      interaction.memberPermissions?.has(
+        PermissionFlagsBits.ManageChannels,
+      ) || isSupport;
 
     if (!isStaff) {
-      await interaction.editReply({ content: "❌ You do not have permission to delete tickets." });
+      await interaction.editReply({
+        content:
+          "❌ You do not have permission to delete tickets.",
+      });
       return;
     }
 
-    // State Check: Require closing first to ensure the end-of-life cycle
     if (ticket.status !== "CLOSED") {
-      await interaction.editReply({ content: "❌ This ticket must be **Closed** before it can be deleted." });
+      await interaction.editReply({
+        content:
+          "❌ This ticket must be **closed** before it can be deleted.",
+      });
       return;
     }
 
     await interaction.editReply({
-      content: "🗑️ Ticket record deleted. Channel will be removed in 5 seconds...",
+      content:
+        "🗑️ Ticket record deleted.\nThis channel will be removed in **5 seconds**.",
     });
 
     await channel.send({
-      content: `⚠️ This ticket has been scheduled for deletion by ${interaction.user} via command.`,
+      content: `⚠️ This ticket will be deleted by ${interaction.user}.`,
     });
+
+    // Log before deleting
+    try {
+      await ticketLogService.logDelete(
+        guild,
+        channel.id,
+        // The Ticket model has no `userId` field — the ticket creator is
+        // `creatorId` (see prisma/schema.prisma and every other ticket
+        // file). This was the one place still using the wrong name.
+        await guild.client.users.fetch(ticket.creatorId),
+        interaction.user,
+      );
+    } catch (error) {
+      logger.warn(
+        "[Ticket Delete] Failed to write ticket log.",
+        error,
+      );
+    }
 
     setTimeout(async () => {
       try {
-        await ticketService.delete(interaction.channelId);
-        await channel.delete("Ticket deletion command.");
+        await ticketService.delete(channel.id);
+
+        await channel.delete(
+          "Ticket deleted via command.",
+        );
       } catch (error) {
-        console.error("[Ticket Delete Command] Error:", error);
+        logger.error(
+          "[Ticket Delete]",
+          error,
+        );
       }
-    }, 5000);
+    }, DELETE_DELAY);
   },
 };
 

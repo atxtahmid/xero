@@ -7,28 +7,53 @@ import logger from "./logger.js";
 class AIService {
   private readonly MAX_PROMPT_LENGTH = 2000;
 
-  /**
-   * The core chat method called by the /chat command
-   */
-  async chat(userId: string, guildId: string, prompt: string): Promise<string> {
+  async chat(
+    userId: string,
+    guildId: string,
+    rawPrompt: string,
+  ): Promise<string> {
     try {
-      if (prompt.length > this.MAX_PROMPT_LENGTH) {
-        return "⚠️ Your message is too long. Please keep it under 2000 characters.";
+      const prompt = rawPrompt.trim();
+
+      if (!prompt) {
+        return "⚠️ Please enter a message to chat with Xero.";
       }
 
-      const context = await aiContextService.buildPrompt(userId, guildId, prompt);
+      if (prompt.length > this.MAX_PROMPT_LENGTH) {
+        return `⚠️ Your message is too long (${prompt.length}/${this.MAX_PROMPT_LENGTH} characters).`;
+      }
+
+      const context = await aiContextService.buildPrompt(
+        userId,
+        guildId,
+        prompt,
+      );
+
       const payload = promptBuilder.build(context);
-      
+
       const response = await geminiService.generate(payload);
 
-      // Save to history
       await chatHistoryService.add(userId, guildId, "user", prompt);
       await chatHistoryService.add(userId, guildId, "assistant", response);
 
       return response;
-    } catch (error) {
-      logger.error(`[AI Service] Error for user ${userId}:`, error);
-      return "⚠️ I'm sorry, I encountered an error while processing your request.";
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        logger.error(
+          `[AI Service] Failure for User: ${userId} | Guild: ${guildId}`,
+          {
+            message: error.message,
+            stack: error.stack,
+          },
+        );
+      } else {
+        logger.error(
+          `[AI Service] Failure for User: ${userId} | Guild: ${guildId}`,
+          error,
+        );
+      }
+
+      return "⚠️ I encountered an error processing that request. Please try again in a few seconds.";
     }
   }
 }

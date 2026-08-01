@@ -6,6 +6,8 @@ import {
   User,
 } from "discord.js";
 
+import logger from "./logger.js";
+
 export type ModerationAction =
   | "Warn"
   | "Kick"
@@ -17,61 +19,60 @@ export type ModerationAction =
 
 export interface ModerationDMOptions {
   action: ModerationAction;
-
   guild: Guild;
-
   moderator: User;
-
   member: GuildMember;
-
   reason: string;
-
   duration?: string;
-
   caseId?: string;
-
   appealUrl?: string;
 }
+
+const SUCCESS_COLOR = 0x57f287;
+const ERROR_COLOR = 0xed4245;
 
 export async function sendModerationDM(
   options: ModerationDMOptions,
 ): Promise<boolean> {
-  const embed =
-    new EmbedBuilder()
-      .setColor(
-        getColor(
-          options.action,
-        ),
-      )
-      .setTitle(
-        "Moderation Notice",
-      )
-      .addFields(
-        {
-          name: "Action",
-          value: options.action,
-          inline: true,
-        },
-        {
-          name: "Server",
-          value: options.guild.name,
-          inline: true,
-        },
-        {
-          name: "Moderator",
-          value:
-            options.moderator.tag,
-        },
-        {
-          name: "Reason",
-          value: options.reason,
-        },
-      )
-      .setTimestamp()
-      .setFooter({
-        text:
-          "If you believe this action was taken in error, please contact the server staff.",
-      });
+  const reason =
+    options.reason.trim() || "No reason provided.";
+
+  const safeReason =
+    reason.length > 1024
+      ? `${reason.slice(0, 1021)}...`
+      : reason;
+
+  const embed = new EmbedBuilder()
+    .setColor(getColor(options.action))
+    .setTitle("Moderation Notice")
+    .setThumbnail(options.member.displayAvatarURL())
+    .addFields(
+      {
+        name: "Action",
+        value: options.action,
+        inline: true,
+      },
+      {
+        name: "Server",
+        value: options.guild.name,
+        inline: true,
+      },
+      {
+        name: "Moderator",
+        value: options.moderator.tag,
+      },
+      {
+        name: "Reason",
+        value: safeReason,
+      },
+    )
+    .setTimestamp()
+    .setFooter({
+      text:
+        "If you believe this action was taken in error, please contact the server staff.",
+      iconURL:
+        options.guild.iconURL() ?? undefined,
+    });
 
   if (options.duration) {
     embed.addFields({
@@ -102,7 +103,15 @@ export async function sendModerationDM(
     });
 
     return true;
-  } catch {
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      logger.error("[Moderation DM] Failed to send DM", {
+        userId: options.member.id,
+        message: error.message,
+        stack: error.stack,
+      });
+    }
+
     return false;
   }
 }
@@ -110,9 +119,9 @@ export async function sendModerationDM(
 export function createSuccessEmbed(
   title: string,
   description: string,
-) {
+): EmbedBuilder {
   return new EmbedBuilder()
-    .setColor(0x57f287)
+    .setColor(SUCCESS_COLOR)
     .setTitle(title)
     .setDescription(description)
     .setTimestamp();
@@ -121,9 +130,9 @@ export function createSuccessEmbed(
 export function createErrorEmbed(
   title: string,
   description: string,
-) {
+): EmbedBuilder {
   return new EmbedBuilder()
-    .setColor(0xed4245)
+    .setColor(ERROR_COLOR)
     .setTitle(title)
     .setDescription(description)
     .setTimestamp();

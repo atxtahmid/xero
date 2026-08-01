@@ -10,6 +10,7 @@ class AntiNukeWhitelistService {
 
   async add(guildId: string, userId: string, category: string) {
     const normalizedCategory = this.normalize(category);
+
     return db.antiNukeWhitelist.upsert({
       where: {
         guildId_userId_category: {
@@ -28,13 +29,19 @@ class AntiNukeWhitelistService {
   }
 
   async remove(guildId: string, userId: string, category: string) {
-    return db.antiNukeWhitelist.deleteMany({
+    const result = await db.antiNukeWhitelist.deleteMany({
       where: {
         guildId,
         userId,
         category: this.normalize(category),
       },
     });
+
+    if (result.count === 0) {
+      throw new Error("Whitelist entry does not exist.");
+    }
+
+    return result;
   }
 
   async clear(guildId: string, userId: string) {
@@ -52,33 +59,36 @@ class AntiNukeWhitelistService {
     category: string,
   ): Promise<boolean> {
     const normalized = this.normalize(category);
-    
-    // Check for specific category or the global "ALL" bypass
+
     const entry = await db.antiNukeWhitelist.findFirst({
       where: {
         guildId,
         userId,
-        category: { in: [normalized, "ALL"] },
+        category: {
+          in: [normalized, "ALL"],
+        },
       },
-      select: { id: true } // Efficiency: Only need to know if it exists
+      select: {
+        id: true,
+      },
     });
 
     return entry !== null;
   }
 
-  /**
-   * Returns a count of all whitelisted entries for pagination logic.
-   */
   async count(guildId: string): Promise<number> {
-    return db.antiNukeWhitelist.count({ where: { guildId } });
+    return db.antiNukeWhitelist.count({
+      where: {
+        guildId,
+      },
+    });
   }
 
-  /**
-   * Supports pagination for large servers.
-   */
   async list(guildId: string, skip = 0, take = 10) {
     return db.antiNukeWhitelist.findMany({
-      where: { guildId },
+      where: {
+        guildId,
+      },
       orderBy: [
         { userId: "asc" },
         { category: "asc" },
@@ -90,8 +100,13 @@ class AntiNukeWhitelistService {
 
   async listUser(guildId: string, userId: string) {
     return db.antiNukeWhitelist.findMany({
-      where: { guildId, userId },
-      orderBy: { category: "asc" },
+      where: {
+        guildId,
+        userId,
+      },
+      orderBy: {
+        category: "asc",
+      },
     });
   }
 }

@@ -1,9 +1,7 @@
+import config from "../config/index.js";
+
 export function isGlobalOwner(userId: string): boolean {
-  const globalOwnerId = process.env.BOT_OWNER_ID;
+  const ownerId = config.owner.id.trim();
 
-  if (!globalOwnerId) {
-    return false;
-  }
-
-  return userId === globalOwnerId;
+  return ownerId.length > 0 && userId === ownerId;
 }

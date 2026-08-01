@@ -7,24 +7,47 @@ export default async function ticketLockButton(interaction: ButtonInteraction): 
   await interaction.deferReply({ ephemeral: true });
 
   const ticket = await ticketService.getByChannel(interaction.channelId);
-  if (!ticket) return;
+  if (!ticket) {
+    await interaction.editReply({ content: "❌ Ticket not found." });
+    return;
+  }
 
-  const isStaff = interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels) ||
-    (ticket.panel.supportRoleId && (interaction.member?.roles as any).cache.has(ticket.panel.supportRoleId));
+  const isStaff =
+    interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels) ||
+    (ticket.panel.supportRoleId &&
+      (interaction.member?.roles as any).cache.has(ticket.panel.supportRoleId));
 
   if (!isStaff) {
     await interaction.editReply({ content: "❌ Permission denied." });
     return;
   }
 
-  await interaction.channel.permissionOverwrites.edit(interaction.guild.roles.everyone, { SendMessages: false });
-  await interaction.channel.permissionOverwrites.edit(ticket.creatorId, { SendMessages: false });
+  if (ticket.status === "LOCKED") {
+    await interaction.editReply({ content: "❌ Ticket is already locked." });
+    return;
+  }
 
   try {
     await ticketService.lock(interaction.channelId);
+
+    await interaction.channel.permissionOverwrites.edit(
+      interaction.guild.roles.everyone,
+      { SendMessages: false }
+    );
+
+    await interaction.channel.permissionOverwrites.edit(
+      ticket.creatorId,
+      { SendMessages: false }
+    );
+
     await interaction.editReply({ content: "✅ Ticket locked." });
-    await interaction.channel.send({ content: `🔒 Locked by ${interaction.user}.` });
+
+    await interaction.channel.send({
+      content: `🔒 Locked by ${interaction.user}.`,
+    });
   } catch (e: any) {
-    await interaction.editReply({ content: `❌ ${e.message}` });
+    await interaction.editReply({
+      content: `❌ ${e.message}`,
+    });
   }
 }

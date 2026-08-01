@@ -1,6 +1,9 @@
 import chatHistoryService from "./chatHistoryService.js";
 
-export type GeminiPart = { text: string };
+export interface GeminiPart {
+  text: string;
+}
+
 export interface GeminiContent {
   role: "user" | "model";
   parts: GeminiPart[];
@@ -9,24 +12,37 @@ export interface GeminiContent {
 class AIContextService {
   private readonly MAX_TOTAL_CHARS = 15000;
 
-  async buildPrompt(userId: string, guildId: string, prompt: string): Promise<GeminiContent[]> {
+  async buildPrompt(
+    userId: string,
+    guildId: string,
+    prompt: string,
+  ): Promise<GeminiContent[]> {
+    const cleanPrompt = prompt.trim();
+
     const history = await chatHistoryService.getConversation(userId, guildId);
+
     const messages: GeminiContent[] = [];
-    let currentLength = prompt.length;
+    let currentLength = cleanPrompt.length;
 
     for (let i = history.length - 1; i >= 0; i--) {
       const msg = history[i];
-      if (currentLength + msg.content.length > this.MAX_TOTAL_CHARS) break;
+      const content = msg.content.trim();
+
+      if (!content) continue;
+
+      if (currentLength + content.length > this.MAX_TOTAL_CHARS) break;
+
       messages.unshift({
         role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content.trim() }],
+        parts: [{ text: content }],
       });
-      currentLength += msg.content.length;
+
+      currentLength += content.length;
     }
 
     messages.push({
       role: "user",
-      parts: [{ text: prompt.trim() }],
+      parts: [{ text: cleanPrompt }],
     });
 
     return messages;

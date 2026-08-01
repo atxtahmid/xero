@@ -1,52 +1,83 @@
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import config from "../config/index.js";
 import logger from "./logger.js";
-import { AIRequestPayload } from "./promptBuilder.js";
+import type { AIRequestPayload } from "./promptBuilder.js";
 
-// Initialize with the API Key object as required by your compiler
-const genAI = new GoogleGenAI({ apiKey: config.gemini.apiKey });
+if (!config.gemini.apiKey) {
+  throw new Error("Gemini API key is missing.");
+}
+
+const ai = new GoogleGenAI({
+  apiKey: config.gemini.apiKey,
+});
 
 class GeminiService {
-  readonly modelName = "gemini-1.5-flash";
+  private readonly modelName = "gemini-1.5-flash";
+
+  private readonly generationConfig = {
+    systemInstruction: "",
+    temperature: 0.7,
+    maxOutputTokens: 2048,
+  };
 
   async generate(payload: AIRequestPayload): Promise<string> {
-    try {
-      /** 
-       * We use a type-cast to 'any' here because the TypeScript compiler 
-       * in some environments fails to see this method on the V1 SDK types, 
-       * even though it exists at runtime.
-       */
-      const model = (genAI as any).getGenerativeModel({
-        model: this.modelName,
-        systemInstruction: payload.systemInstruction,
-      });
-
-      const result = await model.generateContent({
-        contents: payload.contents,
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048,
-        },
-        safetySettings: [
-          {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const result = await ai.models.generateContent({
+          model: this.modelName,
+          contents: payload.contents,
+          config: {
+            ...this.generationConfig,
+            systemInstruction: payload.systemInstruction,
           },
-        ],
-      });
+        });
 
-      const response = await result.response;
-      const text = response.text();
+        const text = result.text?.trim() ?? "";
 
-      if (!text) throw new Error("Empty response from Gemini API");
-      return text;
-    } catch (error: any) {
-      logger.error("[Gemini Service] API Error:", error);
-      if (error.message?.includes("429")) {
-        return "⚠️ The AI is currently overloaded. Please try again in a minute.";
+        if (!text) {
+          throw new Error("Empty response from Gemini API.");
+        }
+
+        return text.length > 2000
+          ? `${text.slice(0, 1997)}...`
+          : text;
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          logger.error("[Gemini Service] API Error", {
+            message: error.message,
+            stack: error.stack,
+          });
+
+          const message = error.message.toLowerCase();
+
+          if (
+            message.includes("429") ||
+            message.includes("quota")
+          ) {
+            return "⚠️ The AI is currently overloaded. Please try again in a minute.";
+          }
+
+          if (
+            attempt < 2 &&
+            (message.includes("500") ||
+              message.includes("503") ||
+              message.includes("internal"))
+          ) {
+            continue;
+          }
+
+          if (message.includes("safety")) {
+            return "⚠️ I couldn't generate a response because the request was blocked by AI safety filters.";
+          }
+        } else {
+          logger.error("[Gemini Service] Unknown API Error", error);
+        }
+
+        throw error;
       }
-      throw error;
     }
+
+    throw new Error("Gemini request failed.");
   }
 }
 

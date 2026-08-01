@@ -3,23 +3,28 @@ import {
   GuildMember,
 } from "discord.js";
 
+/**
+ * Fetch a guild member safely.
+ */
 export async function fetchMember(
   interaction: ChatInputCommandInteraction,
   userId: string,
 ): Promise<GuildMember | null> {
-  if (!interaction.guild) {
+  const guild = interaction.guild;
+  if (!guild) {
     return null;
   }
 
   try {
-    return await interaction.guild.members.fetch(
-      userId,
-    );
+    return await guild.members.fetch(userId);
   } catch {
     return null;
   }
 }
 
+/**
+ * Checks whether the interaction user can moderate the target member.
+ */
 export function canModerate(
   interaction: ChatInputCommandInteraction,
   target: GuildMember,
@@ -27,7 +32,9 @@ export function canModerate(
   success: boolean;
   message?: string;
 } {
-  if (!interaction.guild) {
+  const guild = interaction.guild;
+
+  if (!guild) {
     return {
       success: false,
       message:
@@ -35,9 +42,19 @@ export function canModerate(
     };
   }
 
-  if (
-    target.id === interaction.user.id
-  ) {
+  const moderator = interaction.member;
+
+  if (!(moderator instanceof GuildMember)) {
+    return {
+      success: false,
+      message:
+        "❌ Unable to verify your permissions.",
+    };
+  }
+
+  const bot = guild.members.me;
+
+  if (target.id === interaction.user.id) {
     return {
       success: false,
       message:
@@ -45,9 +62,7 @@ export function canModerate(
     };
   }
 
-  if (
-    target.id === interaction.guild.ownerId
-  ) {
+  if (target.id === guild.ownerId) {
     return {
       success: false,
       message:
@@ -55,11 +70,8 @@ export function canModerate(
     };
   }
 
-  const moderator =
-    interaction.member as GuildMember;
-
   if (
-    moderator.id !== interaction.guild.ownerId &&
+    moderator.id !== guild.ownerId &&
     moderator.roles.highest.position <=
       target.roles.highest.position
   ) {
@@ -69,9 +81,6 @@ export function canModerate(
         "❌ That member has an equal or higher role than you.",
     };
   }
-
-  const bot =
-    interaction.guild.members.me;
 
   if (!target.manageable) {
     return {
@@ -93,7 +102,7 @@ export function canModerate(
     };
   }
 
-return {
+  return {
     success: true,
   };
 }

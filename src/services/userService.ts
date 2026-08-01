@@ -2,31 +2,54 @@ import db from "./database.js";
 
 class UserService {
   async getOrCreate(discordId: string, username?: string) {
-    let user = await db.user.findUnique({
+    const normalizedUsername = username?.trim();
+
+    return db.user.upsert({
       where: {
         id: discordId,
       },
+      update: normalizedUsername
+        ? {
+            username: normalizedUsername,
+          }
+        : {},
+      create: {
+        id: discordId,
+        username: normalizedUsername,
+      },
     });
-
-    if (!user) {
-      user = await db.user.create({
-        data: {
-          id: discordId,
-          username,
-        },
-      });
-    }
-
-    return user;
   }
 
   async updateUsername(discordId: string, username: string) {
-    return db.user.update({
+    const normalizedUsername = username.trim();
+
+    if (!normalizedUsername) {
+      throw new Error("Username cannot be empty.");
+    }
+
+    const existing = await db.user.findUnique({
       where: {
         id: discordId,
       },
-      data: {
-        username,
+      select: {
+        username: true,
+      },
+    });
+
+    if (existing?.username === normalizedUsername) {
+      return existing;
+    }
+
+    return db.user.upsert({
+      where: {
+        id: discordId,
+      },
+      update: {
+        username: normalizedUsername,
+      },
+      create: {
+        id: discordId,
+        username: normalizedUsername,
       },
     });
   }
@@ -39,8 +62,16 @@ class UserService {
     });
   }
 
-  async exists(discordId: string) {
-    const user = await this.find(discordId);
+  async exists(discordId: string): Promise<boolean> {
+    const user = await db.user.findUnique({
+      where: {
+        id: discordId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
     return user !== null;
   }
 }

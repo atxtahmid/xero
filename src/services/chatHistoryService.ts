@@ -14,8 +14,7 @@ class ChatHistoryService {
       const message = await db.chatHistory.create({
         data: {
           role,
-          content,
-          // Use connectOrCreate to handle user/guild setup only when needed
+          content: content.trim(),
           user: {
             connectOrCreate: {
               where: { id: userId },
@@ -31,14 +30,28 @@ class ChatHistoryService {
         },
       });
 
-      // Fire and forget trimming to keep the interaction fast
-      void this.trimConversation(userId, guildId).catch((err) => 
-        logger.error(`[ChatHistory] Trim failed for ${userId}:`, err)
-      );
+      void this.trimConversation(userId, guildId).catch((error: unknown) => {
+        if (error instanceof Error) {
+          logger.error(`[ChatHistory] Trim failed for ${userId}`, {
+            message: error.message,
+            stack: error.stack,
+          });
+        } else {
+          logger.error(`[ChatHistory] Trim failed for ${userId}`, error);
+        }
+      });
 
       return message;
-    } catch (error) {
-      logger.error(`[ChatHistory] Failed to add message for ${userId}:`, error);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        logger.error(`[ChatHistory] Failed to add message for ${userId}`, {
+          message: error.message,
+          stack: error.stack,
+        });
+      } else {
+        logger.error(`[ChatHistory] Failed to add message for ${userId}`, error);
+      }
+
       throw error;
     }
   }
@@ -77,25 +90,39 @@ class ChatHistoryService {
     guildId: string,
   ): Promise<void> {
     const count = await db.chatHistory.count({
-      where: { userId, guildId },
+      where: {
+        userId,
+        guildId,
+      },
     });
 
     if (count <= this.maxMessages) return;
 
-    // Fetch only the IDs of the oldest messages to delete
     const overflowCount = count - this.maxMessages;
+
     const oldestMessages = await db.chatHistory.findMany({
-      where: { userId, guildId },
-      orderBy: { createdAt: "asc" },
+      where: {
+        userId,
+        guildId,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
       take: overflowCount,
-      select: { id: true },
+      select: {
+        id: true,
+      },
     });
 
-    const idsToDelete = oldestMessages.map((m) => m.id);
+    const idsToDelete = oldestMessages.map((message) => message.id);
+
+    if (!idsToDelete.length) return;
 
     await db.chatHistory.deleteMany({
       where: {
-        id: { in: idsToDelete },
+        id: {
+          in: idsToDelete,
+        },
       },
     });
   }
