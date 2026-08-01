@@ -35,10 +35,16 @@ const command: Command = {
     .setDescription("Ban then unban to clear messages.")
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
     .addUserOption((o) =>
-      o.setName("user").setRequired(true),
+      o
+        .setName("user")
+        .setDescription("The member to softban.")
+        .setRequired(true),
     )
     .addStringOption((o) =>
-      o.setName("reason").setRequired(false),
+      o
+        .setName("reason")
+        .setDescription("Reason for the softban.")
+        .setRequired(false),
     ) as SlashCommandBuilder,
 
   async execute(

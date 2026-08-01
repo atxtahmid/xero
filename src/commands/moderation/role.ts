@@ -22,21 +22,35 @@ const command: Command = {
     .addSubcommand((s) =>
       s
         .setName("add")
+        .setDescription("Add a role to a member.")
         .addUserOption((o) =>
-          o.setName("user").setRequired(true),
+          o
+            .setName("user")
+            .setDescription("The member to give the role to.")
+            .setRequired(true),
         )
         .addRoleOption((o) =>
-          o.setName("role").setRequired(true),
+          o
+            .setName("role")
+            .setDescription("The role to add.")
+            .setRequired(true),
         ),
     )
     .addSubcommand((s) =>
       s
         .setName("remove")
+        .setDescription("Remove a role from a member.")
         .addUserOption((o) =>
-          o.setName("user").setRequired(true),
+          o
+            .setName("user")
+            .setDescription("The member to remove the role from.")
+            .setRequired(true),
         )
         .addRoleOption((o) =>
-          o.setName("role").setRequired(true),
+          o
+            .setName("role")
+            .setDescription("The role to remove.")
+            .setRequired(true),
         ),
     ) as SlashCommandBuilder,
 

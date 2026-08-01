@@ -18,13 +18,23 @@ const command: Command = {
       s
         .setName("mute")
         .setDescription("Mute a member in voice.")
-        .addUserOption((o) => o.setName("user").setRequired(true)),
+        .addUserOption((o) =>
+          o
+            .setName("user")
+            .setDescription("The member to voice-mute.")
+            .setRequired(true),
+        ),
     )
     .addSubcommand((s) =>
       s
         .setName("disconnect")
         .setDescription("Disconnect a member from voice.")
-        .addUserOption((o) => o.setName("user").setRequired(true)),
+        .addUserOption((o) =>
+          o
+            .setName("user")
+            .setDescription("The member to disconnect from voice.")
+            .setRequired(true),
+        ),
     ) as SlashCommandBuilder,
 
   async execute(interaction: ChatInputCommandInteraction): Promise<void> {

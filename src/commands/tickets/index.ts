@@ -27,19 +27,3 @@ export {
   unclaim,
   unlock,
 };
-
-export default [
-  add,
-  claim,
-  close,
-  deleteCommand,
-  info,
-  lock,
-  panel,
-  remove,
-  rename,
-  reopen,
-  transcript,
-  unclaim,
-  unlock,
-];
