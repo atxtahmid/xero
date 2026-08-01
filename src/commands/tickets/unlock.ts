@@ -13,7 +13,7 @@ const command: Command = {
   permissions: [],
 
   data: new SlashCommandBuilder()
-    .setName("unlock")
+    .setName("ticket-unlock")
     .setDescription("Unlock the current ticket."),
 
   async execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -42,7 +42,6 @@ const command: Command = {
       return;
     }
 
-    // Reset @everyone and restore creator
     await channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
       SendMessages: null,
       AddReactions: null,

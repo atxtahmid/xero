@@ -13,7 +13,7 @@ const command: Command = {
   permissions: [],
 
   data: new SlashCommandBuilder()
-    .setName("lock")
+    .setName("ticket-lock")
     .setDescription("Lock the current ticket."),
 
   async execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -41,8 +41,7 @@ const command: Command = {
       await interaction.editReply("❌ You do not have permission to lock tickets.");
       return;
     }
-
-    // Harden lock: Deny everyone and explicitly the creator
+    
     await channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
       SendMessages: false,
       AddReactions: false,
