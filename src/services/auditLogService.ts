@@ -5,7 +5,6 @@ import {
   User,
 } from "discord.js";
 
-import auditCacheService from "./auditCacheService.js";
 import { AntiNukeAction } from "../utils/antiNukeActions.js";
 import logger from "./logger.js";
 
@@ -38,12 +37,7 @@ class AuditLogService {
       );
       return null;
     }
-
-    const cached = auditCacheService.get(guild.id, action);
-    if (cached) {
-      return cached;
-    }
-
+    
     const auditType = this.actionMap.get(action);
 
     if (!auditType) {
@@ -75,8 +69,6 @@ class AuditLogService {
       if (!executor || executor.partial) {
         return null;
       }
-
-      auditCacheService.set(guild.id, action, executor);
 
       return executor;
     } catch (error) {

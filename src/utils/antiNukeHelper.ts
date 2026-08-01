@@ -17,7 +17,7 @@ const AUDIT_LOG_DELAY = 1_500;
 const THRESHOLD_WINDOW = 10_000;
 const RESTORE_LOCK_DURATION = 30_000;
 
-let isRestoring = false;
+const restoringGuilds = new Set<string>();
 
 class AntiNukeHelper {
   private getThreshold(
@@ -188,8 +188,8 @@ class AntiNukeHelper {
         );
     }
 
-    if (!isRestoring) {
-      isRestoring = true;
+    if (!restoringGuilds.has(guild.id)) {
+      restoringGuilds.add(guild.id);
 
       try {
         logger.info(
@@ -208,7 +208,7 @@ class AntiNukeHelper {
         );
       } finally {
         setTimeout(() => {
-          isRestoring = false;
+          restoringGuilds.delete(guild.id);
         }, RESTORE_LOCK_DURATION);
       }
     }
