@@ -13,6 +13,7 @@ import { isHighlyTrusted } from "../../utils/auth.js";
 import { Permission } from "../../types/Command.js";
 
 const ITEMS_PER_PAGE = 10;
+const COLLECTOR_TIMEOUT = 60_000;
 
 const command = {
   permissions: [Permission.ANTINUKE],
@@ -26,7 +27,6 @@ const command = {
   async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     if (!interaction.guild) return;
 
-    // Security Gate
     if (!(await isHighlyTrusted(interaction))) {
       await interaction.reply({ content: "❌ Access Denied.", ephemeral: true });
       return;
@@ -58,10 +58,18 @@ const command = {
       return embed;
     };
 
-    const generateButtons = (page: number) => {
+    const generateButtons = (page: number, disabled = false) => {
       return new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId("prev").setLabel("Previous").setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
-        new ButtonBuilder().setCustomId("next").setLabel("Next").setStyle(ButtonStyle.Secondary).setDisabled(page === totalPages - 1)
+        new ButtonBuilder()
+          .setCustomId("prev")
+          .setLabel("Previous")
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(disabled || page === 0),
+        new ButtonBuilder()
+          .setCustomId("next")
+          .setLabel("Next")
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(disabled || page === totalPages - 1),
       );
     };
 
@@ -70,13 +78,35 @@ const command = {
       components: [generateButtons(currentPage)],
     });
 
-    const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60_000 });
+    const collector = message.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      time: COLLECTOR_TIMEOUT,
+    });
 
     collector.on("collect", async (i) => {
-      if (i.user.id !== interaction.user.id) return i.reply({ content: "❌ Not your session.", ephemeral: true });
+      if (i.user.id !== interaction.user.id) {
+        await i.reply({ content: "❌ Not your session.", ephemeral: true });
+        return;
+      }
+
       if (i.customId === "prev") currentPage--;
       else currentPage++;
-      await i.update({ embeds: [await generateEmbed(currentPage)], components: [generateButtons(currentPage)] });
+
+      await i.update({
+        embeds: [await generateEmbed(currentPage)],
+        components: [generateButtons(currentPage)],
+      });
+    });
+
+    collector.on("end", async () => {
+      try {
+        await interaction.editReply({
+          embeds: [await generateEmbed(currentPage)],
+          components: [generateButtons(currentPage, true)],
+        });
+      } catch {
+      
+      }
     });
   },
 };
