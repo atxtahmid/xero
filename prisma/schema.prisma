@@ -63,6 +63,7 @@ model Guild {
   cases              Case[]
   antiNukeSettings   AntiNukeSettings?
   coOwners           AntiNukeCoOwner[]
+  lockdown           AntiNukeLockdown?
   tickets            Ticket[]
   ticketPanels       TicketPanel[]
 }
@@ -187,6 +188,28 @@ model AntiNukeCoOwner {
 
   @@unique([guildId, userId])
   @@index([guildId])
+}
+
+model AntiNukeLockdown {
+  id               String   @id @default(cuid())
+  guildId          String   @unique
+  guild            Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  active           Boolean  @default(false)
+  reason           String
+  // Snapshot of { [roleId]: "permissionBitfieldString" } taken the moment
+  // lockdown engages, used to restore every stripped role exactly as it
+  // was once lockdown lifts.
+  rolePermissions  Json     @default("{}")
+
+  triggeredAt      DateTime @default(now())
+  // Updated every time another Anti-Nuke event fires while lockdown is
+  // already active — the auto-lift scheduler only disengages once this
+  // has gone untouched for the full cooldown window.
+  lastTriggerAt    DateTime @default(now())
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model AntiNukeWhitelist {

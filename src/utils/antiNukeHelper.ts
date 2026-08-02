@@ -6,17 +6,25 @@ import antiNukeLogService from "../services/antiNukeLogService.js";
 import antiNukeWhitelistService from "../services/antiNukeWhitelistService.js";
 import auditLogService from "../services/auditLogService.js";
 import db from "../services/database.js";
+import lockdownService from "../services/lockdownService.js";
 import logger from "../services/logger.js";
 import notificationService from "../services/notificationService.js";
 import punishmentService from "../services/punishmentService.js";
 import restoreService from "../services/restoreService.js";
 
 import { AntiNukeAction } from "./antiNukeActions.js";
+import lockdownTracker from "./lockdownTracker.js";
 import thresholdTracker from "./thresholdTracker.js";
 
 const AUDIT_LOG_DELAY = 1_500;
 const THRESHOLD_WINDOW = 10_000;
 const RESTORE_LOCK_DURATION = 30_000;
+
+// Lockdown Trigger A — a coordinated, multi-attacker situation: this many
+// DISTINCT executors each individually triggering Anti-Nuke within this
+// window is treated as an attack in progress, not isolated incidents.
+const LOCKDOWN_DISTINCT_WINDOW = 30_000;
+const LOCKDOWN_DISTINCT_THRESHOLD = 3;
 
 // Guilds currently mid-restore. Per-guild — see notes in prior fix history:
 // a single shared boolean here previously caused one guild's restore to
@@ -176,6 +184,53 @@ class AntiNukeHelper {
       executor.id,
       action,
     );
+
+    // Lockdown escalation — evaluated before punishment/restore since
+    // containing a live attack takes priority.
+    //
+    // Trigger B (bot speed): the executor is a bot account. A bot
+    // reaching this point already means it crossed a normal Anti-Nuke
+    // threshold — for a bot that implies an API-driven attack far faster
+    // than any human could act, so it escalates immediately on its own,
+    // no need to wait for multiple attackers.
+    //
+    // Trigger A (coordinated attack): 3+ DISTINCT executors (human or
+    // bot) each individually trigger Anti-Nuke within a 30s window. Every
+    // executor — bot or human — still feeds this counter even when
+    // Trigger B already fired on its own, so a bot mixed in with human
+    // attackers still counts toward a coordinated-attack read too.
+    const distinctExecutorCount = lockdownTracker.registerAndCount(
+      guild.id,
+      executor.id,
+      LOCKDOWN_DISTINCT_WINDOW,
+    );
+
+    let lockdownReason: string | null = null;
+
+    if (executor.bot) {
+      lockdownReason = `Bot executor ${executor.tag} triggered Anti-Nuke (${action}).`;
+    } else if (
+      distinctExecutorCount >= LOCKDOWN_DISTINCT_THRESHOLD
+    ) {
+      lockdownReason = `${distinctExecutorCount} distinct executors triggered Anti-Nuke within ${
+        LOCKDOWN_DISTINCT_WINDOW / 1000
+      }s.`;
+    }
+
+    if (lockdownReason) {
+      await lockdownService
+        .engage(guild, lockdownReason)
+        .catch((error) =>
+          logger.error(
+            "[Anti-Nuke] Lockdown engage failed:",
+            error,
+          ),
+        );
+    } else if (await lockdownService.isActive(guild.id)) {
+      // Already locked down and another trigger just happened —
+      // extend the cooldown so the scheduler doesn't lift it mid-attack.
+      await lockdownService.recordAdditionalTrigger(guild.id);
+    }
 
     const member = await guild.members
       .fetch(executor.id)
