@@ -1,132 +1,101 @@
 import {
-  Client,
-  Collection,
-  Events,
-  GatewayIntentBits,
-  Partials,
+  ChatInputCommandInteraction,
+  EmbedBuilder,
+  SlashCommandBuilder,
 } from "discord.js";
 
-import config from "./config/index.js";
-import { loadCommands } from "./handlers/commandHandler.js";
-import { loadEvents } from "./handlers/eventHandler.js";
-import backupScheduler from "./services/backupScheduler.js";
-import lockdownScheduler from "./services/lockdownScheduler.js";
-import logger from "./services/logger.js";
-import notificationService from "./services/notificationService.js";
-import type { Command } from "./types/Command.js";
+import db from "../../services/database.js";
+import lockdownService from "../../services/lockdownService.js";
+import { Permission, type Command } from "../../types/Command.js";
+import { isHighlyTrusted } from "../../utils/auth.js";
 
-declare module "discord.js" {
-  interface Client {
-    commands: Collection<string, Command>;
-  }
-}
+// A manual escape hatch. Lockdown is designed to lift itself automatically
+// once the cooldown passes with no further Anti-Nuke triggers — this
+// command exists purely as a safety net in case that ever needs to be
+// checked or forced (e.g. the scheduler misbehaves, or staff are certain
+// the situation is resolved and don't want to wait out the cooldown).
+const command: Command = {
+  permissions: [Permission.SERVER_OWNER],
+  guildOnly: true,
+  cooldown: 5,
 
-process.on("unhandledRejection", (reason) => {
-  logger.error("Unhandled Promise Rejection:", reason);
+  data: new SlashCommandBuilder()
+    .setName("antinuke-lockdown")
+    .setDescription("View or manage Server Lockdown status (Owner/Co-Owner Only).")
+    .addSubcommand((s) =>
+      s.setName("status").setDescription("Check if Server Lockdown is currently active."),
+    )
+    .addSubcommand((s) =>
+      s
+        .setName("lift")
+        .setDescription("Manually lift Server Lockdown before the automatic cooldown ends."),
+    ) as SlashCommandBuilder,
 
-  void notificationService.notifySystemFailure(
-    client,
-    "Unhandled Promise Rejection",
-    reason,
-  );
-});
+  async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+    if (!interaction.guild) return;
 
-process.on("uncaughtException", (error) => {
-  logger.error("Uncaught Exception:", error);
+    if (!(await isHighlyTrusted(interaction))) {
+      await interaction.reply({
+        content:
+          "❌ Access Denied: This command is restricted to the **Server Owner** and **Co-Owners**.",
+        ephemeral: true,
+      });
+      return;
+    }
 
-  void notificationService.notifySystemFailure(
-    client,
-    "Uncaught Exception",
-    error,
-  );
-});
+    const sub = interaction.options.getSubcommand();
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildModeration,
-    GatewayIntentBits.GuildVoiceStates,
-  ],
-  partials: [
-    Partials.Channel,
-    Partials.Message,
-    Partials.User,
-    Partials.GuildMember,
-  ],
-});
+    if (sub === "status") {
+      const record = await db.antiNukeLockdown.findUnique({
+        where: { guildId: interaction.guild.id },
+      });
 
-client.commands = new Collection<string, Command>();
+      if (!record || !record.active) {
+        await interaction.reply({
+          content: "🔓 Server Lockdown is **not active**.",
+          ephemeral: true,
+        });
+        return;
+      }
 
-client.once(Events.ClientReady, async (readyClient) => {
-  logger.info(
-    `Logged in as ${readyClient.user.tag}`,
-  );
+      const embed = new EmbedBuilder()
+        .setColor(0x992d22)
+        .setTitle("🔒 Server Lockdown Status")
+        .addFields(
+          { name: "Reason", value: record.reason },
+          { name: "Engaged At", value: `<t:${Math.floor(record.triggeredAt.getTime() / 1000)}:F>` },
+          { name: "Last Trigger", value: `<t:${Math.floor(record.lastTriggerAt.getTime() / 1000)}:R>` },
+        )
+        .setFooter({ text: "Auto-lifts 5 minutes after the last Anti-Nuke trigger." });
 
-  try {
-    await backupScheduler.start(readyClient);
-    lockdownScheduler.start(readyClient);
+      await interaction.reply({ embeds: [embed], ephemeral: true });
+      return;
+    }
 
-    logger.info(
-      "Background services started.",
-    );
-  } catch (error) {
-    logger.error(
-      "Failed to start background services:",
-      error,
-    );
-  }
-});
+    // sub === "lift"
+    await interaction.deferReply({ ephemeral: true });
 
-async function shutdown(
-  signal: string,
-): Promise<void> {
-  logger.info(
-    `Received ${signal}. Shutting down...`,
-  );
+    const isActive = await lockdownService.isActive(interaction.guild.id);
 
-  try {
-    backupScheduler.stop();
+    if (!isActive) {
+      await interaction.editReply({
+        content: "🔓 Server Lockdown is not currently active — nothing to lift.",
+      });
+      return;
+    }
 
-    client.destroy();
+    try {
+      await lockdownService.disengage(interaction.guild);
 
-    logger.info("Shutdown complete.");
-  } catch (error) {
-    logger.error(
-      "Shutdown failed:",
-      error,
-    );
-  } finally {
-    process.exit(0);
-  }
-}
+      await interaction.editReply({
+        content: "🔓 Server Lockdown has been manually lifted. Role permissions restored.",
+      });
+    } catch (error: any) {
+      await interaction.editReply({
+        content: `❌ Failed to lift lockdown: ${error.message ?? "Unknown error."}`,
+      });
+    }
+  },
+};
 
-process.once("SIGINT", () => {
-  void shutdown("SIGINT");
-});
-
-process.once("SIGTERM", () => {
-  void shutdown("SIGTERM");
-});
-
-async function start(): Promise<void> {
-  try {
-    await loadCommands(client);
-    await loadEvents(client);
-
-    await client.login(
-      config.discord.token,
-    );
-  } catch (error) {
-    logger.error(
-      "Startup failed:",
-      error,
-    );
-
-    process.exit(1);
-  }
-}
-
-void start();
+export default command;

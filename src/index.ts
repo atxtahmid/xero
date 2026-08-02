@@ -21,6 +21,13 @@ declare module "discord.js" {
   }
 }
 
+// Layer 4 — these fire on truly uncaught errors anywhere in the process
+// (including outside Discord event handlers, e.g. a raw DB connection
+// drop). `client` is referenced here even though it's declared further
+// below: these callbacks only ever run asynchronously, after the whole
+// module has finished loading and `client` is already assigned, so this
+// is safe. `notifySystemFailure` itself no-ops safely if the client
+// isn't logged in yet.
 process.on("unhandledRejection", (reason) => {
   logger.error("Unhandled Promise Rejection:", reason);
 
