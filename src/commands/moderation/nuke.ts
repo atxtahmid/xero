@@ -54,41 +54,57 @@ const command: Command = {
     const oldChannel =
       interaction.channel as TextChannel;
 
-    const newChannel =
-      await oldChannel.clone({
-        name: oldChannel.name,
-        reason: `Channel nuked by ${interaction.user.tag}`,
+    // Previously none of these Discord API calls were wrapped in a
+    // try/catch (unlike the near-identical clone.ts, which does wrap
+    // its equivalent steps) — if clone/setParent/setPosition/delete/send
+    // failed partway through, the interaction would just error out with
+    // no useful message, and depending on which step failed, could leave
+    // the old channel deleted with no replacement ever sent.
+    try {
+      const newChannel =
+        await oldChannel.clone({
+          name: oldChannel.name,
+          reason: `Channel nuked by ${interaction.user.tag}`,
+        });
+
+      await newChannel.setParent(
+        oldChannel.parentId,
+        {
+          lockPermissions: false,
+        },
+      );
+
+      await newChannel.setPosition(
+        oldChannel.position,
+      );
+
+      await oldChannel.delete(
+        `Channel nuked by ${interaction.user.tag}`,
+      );
+
+      await newChannel.send({
+        content: [
+          "# 💥 Channel Nuked",
+          "",
+          `This channel has been reset by ${interaction.user}.`,
+          "All previous messages have been removed.",
+        ].join("\n"),
       });
 
-    await newChannel.setParent(
-      oldChannel.parentId,
-      {
-        lockPermissions: false,
-      },
-    );
+      await interaction.followUp({
+        content:
+          `✅ ${newChannel} has been recreated successfully.`,
+        ephemeral: true,
+      });
+    } catch (error) {
+      console.error("[Nuke Command] Error:", error);
 
-    await newChannel.setPosition(
-      oldChannel.position,
-    );
-
-    await oldChannel.delete(
-      `Channel nuked by ${interaction.user.tag}`,
-    );
-
-    await newChannel.send({
-      content: [
-        "# 💥 Channel Nuked",
-        "",
-        `This channel has been reset by ${interaction.user}.`,
-        "All previous messages have been removed.",
-      ].join("\n"),
-    });
-
-    await interaction.followUp({
-      content:
-        `✅ ${newChannel} has been recreated successfully.`,
-      ephemeral: true,
-    });
+      await interaction.followUp({
+        content:
+          "❌ Failed to nuke the channel. It may have been partially recreated — please check the channel list.",
+        ephemeral: true,
+      }).catch(() => {});
+    }
   },
 };
 

@@ -64,6 +64,7 @@ model Guild {
   antiNukeSettings   AntiNukeSettings?
   coOwners           AntiNukeCoOwner[]
   lockdown           AntiNukeLockdown?
+  tempBans           TempBan[]
   tickets            Ticket[]
   ticketPanels       TicketPanel[]
 }
@@ -200,6 +201,26 @@ model AntiNukeCoOwner {
 
   @@unique([guildId, userId])
   @@index([guildId])
+}
+
+model TempBan {
+  id          String   @id @default(cuid())
+  guildId     String
+  // Deliberately plain strings, not User relations — this table only
+  // needs the raw Discord IDs to call guild.bans.remove(userId) later.
+  // Adding a User foreign key here would reintroduce the exact FK-safety
+  // problem just fixed in caseService.ts/warningService.ts, for no
+  // actual benefit (nothing here needs to join against User data).
+  userId      String
+  moderatorId String
+  reason      String   @db.Text
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  guild       Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, userId])
+  @@index([expiresAt])
 }
 
 model AntiNukeLockdown {

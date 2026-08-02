@@ -1,4 +1,6 @@
 import db from "./database.js";
+import guildService from "./guildService.js";
+import userService from "./userService.js";
 
 class WarningService {
   async create(
@@ -7,6 +9,16 @@ class WarningService {
     moderatorId: string,
     reason: string,
   ) {
+    // Same fix as caseService.createCase() — Warning.userId and
+    // Warning.moderatorId are required foreign keys to User, and nothing
+    // in the codebase created those rows before this. See the comment in
+    // caseService.ts for the full failure scenario this closes.
+    await Promise.all([
+      guildService.getOrCreate(guildId),
+      userService.getOrCreate(userId),
+      userService.getOrCreate(moderatorId),
+    ]);
+
     return db.warning.create({
       data: {
         guildId,

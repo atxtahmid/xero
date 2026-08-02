@@ -11,6 +11,7 @@ import {
   createSuccessEmbed,
   sendModerationDM,
 } from "../../services/moderationService.js";
+import tempBanService from "../../services/tempBanService.js";
 import { Permission, type Command } from "../../types/Command.js";
 import { canModerate, fetchMember } from "../../utils/moderation.js";
 
@@ -79,6 +80,22 @@ const command: Command = {
         reason: `[Duration: ${days}d] ${reason}`,
       });
 
+      // Previously the ban duration was only ever embedded as text in
+      // the case reason — nothing tracked it anywhere queryable, and
+      // nothing ever lifted the ban. See services/tempBanScheduler.ts,
+      // which now checks for and lifts expired entries every minute.
+      const expiresAt = new Date(
+        Date.now() + days * 24 * 60 * 60 * 1000,
+      );
+
+      await tempBanService.create(
+        interaction.guild.id,
+        targetUser.id,
+        interaction.user.id,
+        reason,
+        expiresAt,
+      );
+
       await sendModLog({
         guild: interaction.guild,
         moderator: interaction.user,
@@ -98,7 +115,7 @@ const command: Command = {
               `**Duration:** ${days} day(s)`,
               `**Reason:** ${reason}`,
               `**Case ID:** ${modCase.id}`,
-              "\n⚠️ *Note: Automatic unban requires a background worker.*",
+              `**Expires:** <t:${Math.floor(expiresAt.getTime() / 1000)}:R>`,
             ].join("\n")
           ),
         ],

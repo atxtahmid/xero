@@ -5,9 +5,9 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import db from "../../services/database.js";
 import { createCase } from "../../services/caseService.js";
 import { sendModLog } from "../../services/modLogService.js";
+import warningService from "../../services/warningService.js";
 import {
   createSuccessEmbed,
   sendModerationDM,
@@ -70,14 +70,18 @@ const command: Command = {
     });
 
     // 3. Warning Table Entry (used by /warnings history)
-    const warning = await db.warning.create({
-      data: {
-        guildId: interaction.guild.id,
-        userId: member.id,
-        moderatorId: interaction.user.id,
-        reason,
-      },
-    });
+    // Previously called db.warning.create() directly here instead of
+    // going through warningService.create() — meaning it skipped the
+    // same FK-safety guarantee warningService.ts now provides. It hadn't
+    // caused a visible failure only because createCase() (above) happens
+    // to ensure the same User rows as a side effect first. Using the
+    // shared service directly removes that fragile ordering dependency.
+    const warning = await warningService.create(
+      interaction.guild.id,
+      member.id,
+      interaction.user.id,
+      reason,
+    );
 
     // 4. DM the user
     const dmSent = await sendModerationDM({

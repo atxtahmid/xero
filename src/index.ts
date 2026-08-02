@@ -11,6 +11,7 @@ import { loadCommands } from "./handlers/commandHandler.js";
 import { loadEvents } from "./handlers/eventHandler.js";
 import backupScheduler from "./services/backupScheduler.js";
 import lockdownScheduler from "./services/lockdownScheduler.js";
+import tempBanScheduler from "./services/tempBanScheduler.js";
 import logger from "./services/logger.js";
 import notificationService from "./services/notificationService.js";
 import type { Command } from "./types/Command.js";
@@ -75,6 +76,7 @@ client.once(Events.ClientReady, async (readyClient) => {
   try {
     await backupScheduler.start(readyClient);
     lockdownScheduler.start(readyClient);
+    tempBanScheduler.start(readyClient);
 
     logger.info(
       "Background services started.",

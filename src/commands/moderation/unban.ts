@@ -6,6 +6,7 @@ import {
 
 import { Permission, type Command } from "../../types/Command.js";
 import { sendModLog } from "../../services/modLogService.js";
+import tempBanService from "../../services/tempBanService.js";
 
 const command: Command = {
   permissions: [Permission.MODERATOR],
@@ -40,6 +41,12 @@ const command: Command = {
       }
 
       await interaction.guild.bans.remove(userId, `${interaction.user.tag}: ${reason}`);
+
+      // If this user had a temp ban pending auto-lift, drop that
+      // tracking row now — otherwise it just sits there harmlessly until
+      // the scheduler's next pass finds them already unbanned, but no
+      // reason to leave it stale in the meantime.
+      await tempBanService.remove(interaction.guild.id, userId);
 
       await interaction.editReply({
         content: `✅ User **${ban.user.tag}** (\`${userId}\`) has been unbanned.\n**Reason:** ${reason}`,
