@@ -11,12 +11,57 @@ import logger from "./logger.js";
 import { AntiNukeAction } from "../utils/antiNukeActions.js";
 
 class AntiNukeLogService {
-  async send(
-    guild: Guild,
+  /**
+   * Builds the Anti-Nuke event embed. Split out from `sendToChannel` so
+   * the exact same embed can also be handed to `notificationService`
+   * for co-owner/owner DMs (Layers 2 & 3) — one source of truth for what
+   * the alert actually says.
+   */
+  buildEmbed(
+    executorTag: string,
     executorId: string,
     action: AntiNukeAction,
     punishment: PunishmentType,
-  ): Promise<void> {
+  ): EmbedBuilder {
+    return new EmbedBuilder()
+      .setColor(0xff0000)
+      .setTitle("🚨 Anti-Nuke Triggered")
+      .setDescription(
+        "An unauthorized high-frequency action was detected and neutralized.",
+      )
+      .addFields(
+        {
+          name: "🛡️ Executor",
+          value: `${executorTag}\n(\`${executorId}\`)`,
+          inline: true,
+        },
+        {
+          name: "⚡ Action",
+          value: `\`${action}\``,
+          inline: true,
+        },
+        {
+          name: "🔨 Punishment",
+          value: `\`${punishment}\``,
+          inline: true,
+        },
+      )
+      .setFooter({
+        text: "Xero Security Engine",
+      })
+      .setTimestamp();
+  }
+
+  /**
+   * Posts a prebuilt embed to the configured Anti-Nuke log channel, if
+   * one exists. Returns whether it actually reached a channel — callers
+   * (see antiNukeHelper.ts / notificationService.ts) use this to decide
+   * whether co-owners still need to be notified directly.
+   */
+  async sendToChannel(
+    guild: Guild,
+    embed: EmbedBuilder,
+  ): Promise<boolean> {
     try {
       const settings = await db.guildSettings.findUnique({
         where: {
@@ -25,7 +70,7 @@ class AntiNukeLogService {
       });
 
       if (!settings?.antiNukeLogChannelId) {
-        return;
+        return false;
       }
 
       const channel = await guild.channels
@@ -33,60 +78,32 @@ class AntiNukeLogService {
         .catch(() => null);
 
       if (!(channel instanceof TextChannel)) {
-        await db.guildSettings.update({
-          where: {
-            guildId: guild.id,
-          },
-          data: {
-            antiNukeLogChannelId: null,
-          },
-        }).catch(() => {});
+        await db.guildSettings
+          .update({
+            where: {
+              guildId: guild.id,
+            },
+            data: {
+              antiNukeLogChannelId: null,
+            },
+          })
+          .catch(() => {});
 
-        return;
+        return false;
       }
-
-      const executor = await guild.client.users
-        .fetch(executorId)
-        .catch(() => null);
-
-      const embed = new EmbedBuilder()
-        .setColor(0xff0000)
-        .setTitle("🚨 Anti-Nuke Triggered")
-        .setDescription(
-          "An unauthorized high-frequency action was detected and neutralized.",
-        )
-        .addFields(
-          {
-            name: "🛡️ Executor",
-            value: executor
-              ? `${executor.tag}\n(\`${executor.id}\`)`
-              : `Unknown User\n(\`${executorId}\`)`,
-            inline: true,
-          },
-          {
-            name: "⚡ Action",
-            value: `\`${action}\``,
-            inline: true,
-          },
-          {
-            name: "🔨 Punishment",
-            value: `\`${punishment}\``,
-            inline: true,
-          },
-        )
-        .setFooter({
-          text: "Xero Security Engine",
-        })
-        .setTimestamp();
 
       await channel.send({
         embeds: [embed],
       });
+
+      return true;
     } catch (error) {
       logger.error(
         `[AntiNukeLog] Failed to send log for guild ${guild.id}:`,
         error,
       );
+
+      return false;
     }
   }
 }

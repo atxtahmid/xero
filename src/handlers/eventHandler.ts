@@ -11,6 +11,7 @@ import {
 } from "node:url";
 
 import logger from "../services/logger.js";
+import notificationService from "../services/notificationService.js";
 import type { Event } from "../types/Event.js";
 
 const __filename =
@@ -104,14 +105,23 @@ export async function loadEvents(
           (...args) =>
             void Promise.resolve(
               event.execute(...args),
-            ).catch((error) =>
+            ).catch((error) => {
               logger.error(
                 `Error in event ${String(
                   event.name,
                 )}`,
                 error,
-              ),
-            ),
+              );
+
+              // Layer 4 — an uncaught error inside an event handler is
+              // exactly the kind of thing that should wake up the bot
+              // owner, not just sit in the log file.
+              void notificationService.notifySystemFailure(
+                client,
+                `Event handler threw: ${String(event.name)}`,
+                error,
+              );
+            }),
         );
       } else {
         client.on(
@@ -119,14 +129,20 @@ export async function loadEvents(
           (...args) =>
             void Promise.resolve(
               event.execute(...args),
-            ).catch((error) =>
+            ).catch((error) => {
               logger.error(
                 `Error in event ${String(
                   event.name,
                 )}`,
                 error,
-              ),
-            ),
+              );
+
+              void notificationService.notifySystemFailure(
+                client,
+                `Event handler threw: ${String(event.name)}`,
+                error,
+              );
+            }),
         );
       }
 

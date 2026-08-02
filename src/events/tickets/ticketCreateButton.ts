@@ -9,6 +9,7 @@ import {
 } from "discord.js";
 
 import db from "../../services/database.js";
+import notificationService from "../../services/notificationService.js";
 import ticketService from "../../services/ticketService.js";
 
 export default async function ticketCreateButton(
@@ -128,4 +129,15 @@ export default async function ticketCreateButton(
   });
 
   await interaction.editReply({ content: `✅ Ticket created: ${channel}` });
+
+  // Layer 1 — if the support role is missing or has no human members,
+  // this pings up to 5 qualifying admin roles in the ticket channel
+  // (falling back to a server-owner DM) so the ticket doesn't sit
+  // unattended. Fire-and-forget: this should never block or fail ticket
+  // creation itself.
+  notificationService
+    .checkAndNotifyTicketSupportRole(channel, panel.supportRoleId)
+    .catch((error) => {
+      console.error("[Ticket Create] Support role notification failed:", error);
+    });
 }

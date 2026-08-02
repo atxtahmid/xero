@@ -11,6 +11,7 @@ import { loadCommands } from "./handlers/commandHandler.js";
 import { loadEvents } from "./handlers/eventHandler.js";
 import backupScheduler from "./services/backupScheduler.js";
 import logger from "./services/logger.js";
+import notificationService from "./services/notificationService.js";
 import type { Command } from "./types/Command.js";
 
 declare module "discord.js" {
@@ -21,10 +22,22 @@ declare module "discord.js" {
 
 process.on("unhandledRejection", (reason) => {
   logger.error("Unhandled Promise Rejection:", reason);
+
+  void notificationService.notifySystemFailure(
+    client,
+    "Unhandled Promise Rejection",
+    reason,
+  );
 });
 
 process.on("uncaughtException", (error) => {
   logger.error("Uncaught Exception:", error);
+
+  void notificationService.notifySystemFailure(
+    client,
+    "Uncaught Exception",
+    error,
+  );
 });
 
 const client = new Client({

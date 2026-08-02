@@ -7,6 +7,7 @@ import antiNukeWhitelistService from "../services/antiNukeWhitelistService.js";
 import auditLogService from "../services/auditLogService.js";
 import db from "../services/database.js";
 import logger from "../services/logger.js";
+import notificationService from "../services/notificationService.js";
 import punishmentService from "../services/punishmentService.js";
 import restoreService from "../services/restoreService.js";
 
@@ -17,6 +18,9 @@ const AUDIT_LOG_DELAY = 1_500;
 const THRESHOLD_WINDOW = 10_000;
 const RESTORE_LOCK_DURATION = 30_000;
 
+// Guilds currently mid-restore. Per-guild — see notes in prior fix history:
+// a single shared boolean here previously caused one guild's restore to
+// block every other guild's restore for up to 30 seconds.
 const restoringGuilds = new Set<string>();
 
 class AntiNukeHelper {
@@ -206,6 +210,15 @@ class AntiNukeHelper {
           `[Anti-Nuke] Restoration failed for guild ${guild.id}:`,
           error,
         );
+
+        // Layer 4 — restore failing means a nuked guild may be left
+        // un-repaired. That's critical enough to wake up the bot owner,
+        // not just sit in the log file.
+        await notificationService.notifySystemFailure(
+          guild.client,
+          `Anti-Nuke restore failed for guild ${guild.id} (${guild.name})`,
+          error,
+        );
       } finally {
         setTimeout(() => {
           restoringGuilds.delete(guild.id);
@@ -213,11 +226,24 @@ class AntiNukeHelper {
       }
     }
 
-    await antiNukeLogService.send(
-      guild,
+    // Layers 2 & 3 — make sure a human actually sees this, not just the
+    // log channel (if one even exists).
+    const embed = antiNukeLogService.buildEmbed(
+      executor.tag,
       executor.id,
       action,
       settings.punishment,
+    );
+
+    const channelNotified = await antiNukeLogService.sendToChannel(
+      guild,
+      embed,
+    );
+
+    await notificationService.notifyAntiNukeEvent(
+      guild,
+      embed,
+      channelNotified,
     );
 
     return true;
