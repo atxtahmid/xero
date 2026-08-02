@@ -59,7 +59,7 @@ const command: Command = {
     }
 
     // 1. Hierarchy and Permission Validation
-    const check = canModerate(interaction, member);
+    const check = await canModerate(interaction, member);
     if (!check.success) {
       await interaction.editReply({ content: check.message! });
       return;

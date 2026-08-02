@@ -3,6 +3,8 @@ import {
   GuildMember,
 } from "discord.js";
 
+import { isTrustedOwner } from "./ownerTrust.js";
+
 /**
  * Fetch a guild member safely.
  */
@@ -24,14 +26,19 @@ export async function fetchMember(
 
 /**
  * Checks whether the interaction user can moderate the target member.
+ *
+ * Now async: the hierarchy bypass for "the moderator is the owner" needs
+ * to resolve through the Owner Bypass system (utils/ownerTrust.ts) rather
+ * than trusting raw guild.ownerId, so a compromised owner account loses
+ * this bypass the moment the bot's global owner claims an override.
  */
-export function canModerate(
+export async function canModerate(
   interaction: ChatInputCommandInteraction,
   target: GuildMember,
-): {
+): Promise<{
   success: boolean;
   message?: string;
-} {
+}> {
   const guild = interaction.guild;
 
   if (!guild) {
@@ -62,6 +69,12 @@ export function canModerate(
     };
   }
 
+  // This one intentionally stays tied to the REAL Discord owner, not the
+  // resolved trusted owner — Discord's API will always reject a kick/ban
+  // against the actual owner no matter what this bot thinks, so this is
+  // just giving an accurate error message early rather than a generic
+  // "action failed" from Discord. It has no security implication either
+  // way, since the platform enforces this regardless.
   if (target.id === guild.ownerId) {
     return {
       success: false,
@@ -70,8 +83,13 @@ export function canModerate(
     };
   }
 
+  const moderatorIsTrustedOwner = await isTrustedOwner(
+    guild,
+    moderator.id,
+  );
+
   if (
-    moderator.id !== guild.ownerId &&
+    !moderatorIsTrustedOwner &&
     moderator.roles.highest.position <=
       target.roles.highest.position
   ) {

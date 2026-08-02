@@ -44,7 +44,7 @@ const command: Command = {
     const reason = interaction.options.getString("reason") ?? "No reason provided.";
 
     if (member) {
-      const check = canModerate(interaction, member);
+      const check = await canModerate(interaction, member);
       if (!check.success) {
         await interaction.editReply({ content: check.message! });
         return;

@@ -54,7 +54,7 @@ const command: Command = {
 
     // 1. Hierarchy Check: Prevent clearing records for superiors
     if (member) {
-      const check = canModerate(interaction, member);
+      const check = await canModerate(interaction, member);
       if (!check.success) {
         await interaction.editReply({ content: check.message! });
         return;

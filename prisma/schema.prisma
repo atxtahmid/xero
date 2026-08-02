@@ -87,6 +87,18 @@ model GuildSettings {
   modRoleId          String?
   adminRoleId        String?
 
+  // Owner Bypass system — see utils/ownerTrust.ts. Null means "trust
+  // whoever Discord says is the real guild.ownerId" (the normal case).
+  // Only the bot's global owner can set this, via /owner-bypass claim,
+  // for exactly one scenario: the real owner's Discord account is
+  // compromised. Discord itself still lets that account act with full
+  // owner power directly in the Discord client — nothing here changes
+  // that — but every trust decision THIS BOT makes (Anti-Nuke's owner
+  // exemption, isHighlyTrusted(), command permission bypasses) switches
+  // to trusting this ID instead, and the original owner ID is treated as
+  // a completely ordinary member everywhere this bot checks trust.
+  trustedOwnerId     String?
+
   searchEnabled      Boolean  @default(true)
 
   createdAt          DateTime @default(now())

@@ -74,7 +74,7 @@ const command: Command = {
       return;
     }
 
-    const check = canModerate(
+    const check = await canModerate(
       interaction,
       member,
     );

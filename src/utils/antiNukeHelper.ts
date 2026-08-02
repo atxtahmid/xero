@@ -14,6 +14,7 @@ import restoreService from "../services/restoreService.js";
 
 import { AntiNukeAction } from "./antiNukeActions.js";
 import lockdownTracker from "./lockdownTracker.js";
+import { isTrustedOwner } from "./ownerTrust.js";
 import thresholdTracker from "./thresholdTracker.js";
 
 const AUDIT_LOG_DELAY = 1_500;
@@ -116,7 +117,7 @@ class AntiNukeHelper {
     }
 
     if (
-      executor.id === guild.ownerId ||
+      (await isTrustedOwner(guild, executor.id)) ||
       executor.id === config.owner.id
     ) {
       return false;

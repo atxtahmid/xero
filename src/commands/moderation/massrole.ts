@@ -7,6 +7,7 @@ import {
 
 import { Permission, type Command } from "../../types/Command.js";
 import { sendModLog } from "../../services/modLogService.js";
+import { isTrustedOwner } from "../../utils/ownerTrust.js";
 
 const command: Command = {
   permissions: [Permission.MODERATOR],
@@ -34,7 +35,8 @@ const command: Command = {
     const moderator = interaction.member as any;
 
     // 1. Hierarchy Check: Moderator vs Role
-    if (interaction.user.id !== interaction.guild.ownerId && role.position >= moderator.roles.highest.position) {
+    const moderatorIsTrustedOwner = await isTrustedOwner(interaction.guild, interaction.user.id);
+    if (!moderatorIsTrustedOwner && role.position >= moderator.roles.highest.position) {
       await interaction.editReply("❌ You cannot manage a role higher than or equal to yours.");
       return;
     }

@@ -69,7 +69,7 @@ const command: Command = {
       return;
     }
 
-    const check = canModerate(interaction, member);
+    const check = await canModerate(interaction, member);
 
     if (!check.success) {
       await interaction.reply({

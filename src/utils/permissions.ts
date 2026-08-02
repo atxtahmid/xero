@@ -6,6 +6,7 @@ import {
 import { Permission } from "../types/Command.js";
 import { isHighlyTrusted } from "./auth.js";
 import { isGlobalOwner } from "./globalOwner.js";
+import { isTrustedOwner } from "./ownerTrust.js";
 
 /**
  * Checks whether a user has permission to execute a command.
@@ -34,8 +35,11 @@ export async function hasPermission(
     return false;
   }
 
-  // Server owner bypass
-  if (guild.ownerId === interaction.user.id) {
+  // Server owner bypass — resolved via the Owner Bypass system (see
+  // utils/ownerTrust.ts), not raw guild.ownerId. If the global owner has
+  // claimed an override because the real owner's account is compromised,
+  // this no longer passes for the original owner.
+  if (await isTrustedOwner(guild, interaction.user.id)) {
     return true;
   }
 

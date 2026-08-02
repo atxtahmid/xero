@@ -108,7 +108,7 @@ const command: Command = {
     }
 
     const check =
-      canModerate(
+      await canModerate(
         interaction,
         member,
       );
