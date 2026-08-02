@@ -25,6 +25,12 @@ class AuditLogService {
     [AntiNukeAction.SERVER_UPDATE, AuditLogEvent.GuildUpdate],
   ]);
 
+  private readonly inFlight = new Map<string, Promise<User | null>>();
+
+  private makeKey(guildId: string, action: AntiNukeAction): string {
+    return `${guildId}:${action}`;
+  }
+
   async getExecutor(
     guild: Guild,
     action: AntiNukeAction,
@@ -37,7 +43,28 @@ class AuditLogService {
       );
       return null;
     }
-    
+
+    const key = this.makeKey(guild.id, action);
+
+    const existing = this.inFlight.get(key);
+
+    if (existing) {
+      return existing;
+    }
+
+    const fetchPromise = this.fetchExecutor(guild, action).finally(() => {
+      this.inFlight.delete(key);
+    });
+
+    this.inFlight.set(key, fetchPromise);
+
+    return fetchPromise;
+  }
+
+  private async fetchExecutor(
+    guild: Guild,
+    action: AntiNukeAction,
+  ): Promise<User | null> {
     const auditType = this.actionMap.get(action);
 
     if (!auditType) {
