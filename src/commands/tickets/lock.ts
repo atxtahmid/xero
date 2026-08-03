@@ -5,6 +5,8 @@ import {
 } from "discord.js";
 import type { Command } from "../../types/Command.js";
 import ticketService from "../../services/ticketService.js";
+import ticketLogService from "../../services/ticketLogService.js";
+import logger from "../../services/logger.js";
 import { isTicketStaff } from "../../utils/ticketPermissions.js";
 
 const command: Command = {
@@ -53,6 +55,18 @@ const command: Command = {
       await ticketService.lock(interaction.channelId);
       await interaction.editReply("✅ Ticket locked successfully.");
       await channel.send(`🔒 This ticket has been locked by ${interaction.user}.`);
+
+      const creator = await interaction.client.users
+        .fetch(ticket.creatorId)
+        .catch(() => null);
+
+      if (creator) {
+        ticketLogService
+          .logLock(interaction.guild, interaction.channelId, creator, interaction.user)
+          .catch((error) => {
+            logger.error("[Ticket Lock] Failed to write ticket log:", error);
+          });
+      }
     } catch (error: any) {
       await interaction.editReply(`❌ ${error.message}`);
     }

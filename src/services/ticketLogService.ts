@@ -237,6 +237,22 @@ class TicketLogService {
       staff,
     );
   }
+
+  async logReopen(
+    guild: Guild,
+    channelId: string,
+    user: User,
+    staff: User,
+  ) {
+    await this.log(
+      guild,
+      channelId,
+      0x57f287,
+      "Ticket Reopened",
+      user,
+      staff,
+    );
+  }
 }
 
 export default new TicketLogService();

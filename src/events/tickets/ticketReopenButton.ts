@@ -6,6 +6,8 @@ import {
   TextChannel,
 } from "discord.js";
 import ticketService from "../../services/ticketService.js";
+import ticketLogService from "../../services/ticketLogService.js";
+import logger from "../../services/logger.js";
 import { isTicketStaff } from "../../utils/ticketPermissions.js";
 
 export default async function ticketReopenButton(
@@ -85,6 +87,18 @@ export default async function ticketReopenButton(
     await interaction.channel.send({
       content: `🔓 Reopened by ${interaction.user}.`,
     });
+
+    const creator = await interaction.client.users
+      .fetch(ticket.creatorId)
+      .catch(() => null);
+
+    if (creator) {
+      ticketLogService
+        .logReopen(interaction.guild, interaction.channelId, creator, interaction.user)
+        .catch((error) => {
+          logger.error("[Ticket Reopen] Failed to write ticket log:", error);
+        });
+    }
   } catch (e: any) {
     await interaction.editReply({
       content: `❌ ${e.message ?? "Failed to reopen ticket."}`,

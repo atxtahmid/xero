@@ -8,6 +8,8 @@ import {
   TextChannel,
 } from "discord.js";
 import ticketService from "../../services/ticketService.js";
+import ticketLogService from "../../services/ticketLogService.js";
+import logger from "../../services/logger.js";
 
 export default async function ticketCloseButton(
   interaction: ButtonInteraction,
@@ -72,4 +74,16 @@ export default async function ticketCloseButton(
   await channel.send({
     content: `🔴 Closed by ${interaction.user}.`,
   });
+
+  const creator = await interaction.client.users
+    .fetch(ticket.creatorId)
+    .catch(() => null);
+
+  if (creator) {
+    ticketLogService
+      .logClose(interaction.guild, interaction.channelId, creator, interaction.user)
+      .catch((error) => {
+        logger.error("[Ticket Close] Failed to write ticket log:", error);
+      });
+  }
 }

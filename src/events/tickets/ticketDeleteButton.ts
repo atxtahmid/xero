@@ -1,5 +1,6 @@
 import { ButtonInteraction, TextChannel } from "discord.js";
 import logger from "../../services/logger.js";
+import ticketLogService from "../../services/ticketLogService.js";
 import ticketService from "../../services/ticketService.js";
 import { isTicketStaff } from "../../utils/ticketPermissions.js";
 
@@ -45,6 +46,22 @@ export default async function ticketDeleteButton(interaction: ButtonInteraction)
   await interaction.channel.send({
     content: `⚠️ Scheduled for deletion by ${interaction.user}.`,
   });
+
+  // Logged now, before deletion, not inside the setTimeout below — once
+  // the channel is actually gone there's nothing left to reference it
+  // from, and the slash-command version of this action (delete.ts)
+  // follows the same "log before deleting" order.
+  const creator = await interaction.client.users
+    .fetch(ticket.creatorId)
+    .catch(() => null);
+
+  if (creator) {
+    ticketLogService
+      .logDelete(interaction.guild, interaction.channelId, creator, interaction.user)
+      .catch((error) => {
+        logger.error("[Ticket Delete] Failed to write ticket log:", error);
+      });
+  }
 
   setTimeout(async () => {
     try {

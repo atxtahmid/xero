@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import type { Command } from "../../types/Command.js";
 import ticketService from "../../services/ticketService.js";
+import ticketLogService from "../../services/ticketLogService.js";
 import logger from "../../services/logger.js";
 
 const command: Command = {
@@ -116,6 +117,18 @@ const command: Command = {
       await channel.send({
         content: `🔓 Ticket reopened by ${interaction.user}.`,
       });
+
+      const creator = await interaction.client.users
+        .fetch(ticket.creatorId)
+        .catch(() => null);
+
+      if (creator) {
+        ticketLogService
+          .logReopen(interaction.guild, interaction.channelId, creator, interaction.user)
+          .catch((error) => {
+            logger.error("[Ticket Reopen] Failed to write ticket log:", error);
+          });
+      }
     } catch (error) {
       logger.error("[Ticket Reopen]", error);
 

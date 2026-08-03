@@ -11,6 +11,7 @@ import {
 import db from "../../services/database.js";
 import logger from "../../services/logger.js";
 import notificationService from "../../services/notificationService.js";
+import ticketLogService from "../../services/ticketLogService.js";
 import ticketService from "../../services/ticketService.js";
 
 export default async function ticketCreateButton(
@@ -130,6 +131,17 @@ export default async function ticketCreateButton(
   });
 
   await interaction.editReply({ content: `✅ Ticket created: ${channel}` });
+
+  // ticketLogService had 7 log methods built but only logDelete (and only
+  // its slash-command path) was ever actually called anywhere — every
+  // other ticket lifecycle event, including creation, was silently
+  // unlogged despite panel admins being able to configure a log channel
+  // expecting exactly this.
+  ticketLogService
+    .logCreate(interaction.guild, channel.id, interaction.user)
+    .catch((error) => {
+      logger.error("[Ticket Create] Failed to write ticket log:", error);
+    });
 
   // Layer 1 — if the support role is missing or has no human members,
   // this pings up to 5 qualifying admin roles in the ticket channel

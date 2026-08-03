@@ -7,6 +7,8 @@ import {
   TextChannel,
 } from "discord.js";
 import ticketService from "../../services/ticketService.js";
+import ticketLogService from "../../services/ticketLogService.js";
+import logger from "../../services/logger.js";
 
 export default async function ticketUnclaimButton(
   interaction: ButtonInteraction,
@@ -93,6 +95,18 @@ export default async function ticketUnclaimButton(
     await interaction.channel.send({
       content: `↩️ ${interaction.user} has unclaimed this ticket.`,
     });
+
+    const creator = await interaction.client.users
+      .fetch(ticket.creatorId)
+      .catch(() => null);
+
+    if (creator) {
+      ticketLogService
+        .logUnclaim(interaction.guild, interaction.channelId, creator, interaction.user)
+        .catch((error) => {
+          logger.error("[Ticket Unclaim] Failed to write ticket log:", error);
+        });
+    }
   } catch (e: any) {
     await interaction.editReply({
       content: `❌ ${e.message ?? "Failed to unclaim ticket."}`,

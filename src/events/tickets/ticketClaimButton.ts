@@ -7,6 +7,7 @@ import {
   TextChannel,
 } from "discord.js";
 import ticketService from "../../services/ticketService.js";
+import ticketLogService from "../../services/ticketLogService.js";
 import logger from "../../services/logger.js";
 
 export default async function ticketClaimButton(
@@ -115,6 +116,18 @@ export default async function ticketClaimButton(
     await interaction.channel.send({
       content: `🙋 ${interaction.user} has claimed this ticket.`,
     });
+
+    const creator = await interaction.client.users
+      .fetch(ticket.creatorId)
+      .catch(() => null);
+
+    if (creator) {
+      ticketLogService
+        .logClaim(interaction.guild, interaction.channelId, creator, interaction.user)
+        .catch((error) => {
+          logger.error("[Ticket Claim] Failed to write ticket log:", error);
+        });
+    }
   } catch (error) {
     logger.error("[Ticket Claim Button]", error);
 

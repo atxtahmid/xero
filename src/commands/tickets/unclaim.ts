@@ -6,6 +6,8 @@ import {
 } from "discord.js";
 import type { Command } from "../../types/Command.js";
 import ticketService from "../../services/ticketService.js";
+import ticketLogService from "../../services/ticketLogService.js";
+import logger from "../../services/logger.js";
 
 const command: Command = {
   guildOnly: true,
@@ -51,6 +53,18 @@ const command: Command = {
 
     await interaction.editReply("✅ You have unclaimed this ticket.");
     await channel.send(`↩️ ${interaction.user} has unclaimed this ticket.`);
+
+    const creator = await interaction.client.users
+      .fetch(ticket.creatorId)
+      .catch(() => null);
+
+    if (creator) {
+      ticketLogService
+        .logUnclaim(interaction.guild, interaction.channelId, creator, interaction.user)
+        .catch((error) => {
+          logger.error("[Ticket Unclaim] Failed to write ticket log:", error);
+        });
+    }
   },
 };
 
