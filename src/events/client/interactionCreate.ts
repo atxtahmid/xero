@@ -9,6 +9,7 @@ import {
 import type { Event } from "../../types/Event.js";
 import { hasPermission } from "../../utils/permissions.js";
 import logger from "../../services/logger.js";
+import serverLogService from "../../services/serverLogService.js";
 
 import ticketCreateButton from "../tickets/ticketCreateButton.js";
 import ticketClaimButton from "../tickets/ticketClaimButton.js";
@@ -20,6 +21,26 @@ import ticketDeleteButton from "../tickets/ticketDeleteButton.js";
 import ticketReopenButton from "../tickets/ticketReopenButton.js";
 
 const cooldowns = new Collection<string, Collection<string, number>>();
+
+/**
+ * Best-effort "name:value name:value" rendering of a slash command's
+ * options, for Server Log entries — flattens one level for subcommands
+ * so `/ban user:@x reason:spam` and `/settings-ai enabled:true` both
+ * render sensibly. Not meant to be a complete/lossless serialization.
+ */
+function formatCommandOptions(
+  interaction: ChatInputCommandInteraction,
+): string {
+  return interaction.options.data
+    .flatMap((option) =>
+      option.options && option.options.length > 0
+        ? option.options
+        : [option],
+    )
+    .filter((option) => option.value !== undefined)
+    .map((option) => `${option.name}:${option.value}`)
+    .join(" ");
+}
 
 type ButtonHandler = (interaction: ButtonInteraction) => Promise<void>;
 
@@ -156,6 +177,24 @@ async function handleSlashCommand(
   setTimeout(() => {
     timestamps.delete(interaction.user.id);
   }, cooldownAmount);
+
+  // Server Log: record command usage (which command, by whom, where) —
+  // fire-and-forget so a logging failure never blocks the command
+  // itself. Only meaningful in a guild; DM-run commands have no guild
+  // log channel to send to.
+  if (interaction.guild) {
+    serverLogService
+      .logCommandUsage(
+        interaction.guild,
+        interaction.channelId,
+        interaction.user,
+        interaction.commandName,
+        formatCommandOptions(interaction),
+      )
+      .catch((error) => {
+        logger.error("[Server Log] Failed to log command usage:", error);
+      });
+  }
 
   // Execute command
   try {

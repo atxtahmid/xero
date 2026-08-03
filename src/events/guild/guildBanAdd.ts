@@ -5,6 +5,7 @@ import {
 
 import antiNukeHelper from "../../utils/antiNukeHelper.js";
 import { AntiNukeAction } from "../../utils/antiNukeActions.js";
+import serverLogService from "../../services/serverLogService.js";
 
 export default {
   name: Events.GuildBanAdd,
@@ -16,5 +17,7 @@ export default {
       ban.guild,
       AntiNukeAction.MASS_BAN,
     );
+
+    await serverLogService.logBanAdd(ban.guild, ban.user, ban.reason ?? null);
   },
 };

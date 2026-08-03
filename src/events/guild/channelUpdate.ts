@@ -5,6 +5,7 @@ import {
 
 import antiNukeHelper from "../../utils/antiNukeHelper.js";
 import { AntiNukeAction } from "../../utils/antiNukeActions.js";
+import serverLogService from "../../services/serverLogService.js";
 
 export default {
   name: Events.ChannelUpdate,
@@ -16,6 +17,12 @@ export default {
     await antiNukeHelper.handle(
       newChannel.guild,
       AntiNukeAction.CHANNEL_UPDATE,
+    );
+
+    await serverLogService.logChannelUpdate(
+      newChannel.guild,
+      oldChannel,
+      newChannel,
     );
   },
 };

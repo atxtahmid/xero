@@ -5,6 +5,7 @@ import {
 
 import antiNukeHelper from "../../utils/antiNukeHelper.js";
 import { AntiNukeAction } from "../../utils/antiNukeActions.js";
+import serverLogService from "../../services/serverLogService.js";
 
 export default {
   name: Events.ChannelDelete,
@@ -16,5 +17,7 @@ export default {
       channel.guild,
       AntiNukeAction.CHANNEL_DELETE,
     );
+
+    await serverLogService.logChannelDelete(channel.guild, channel);
   },
 };

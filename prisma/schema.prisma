@@ -79,6 +79,7 @@ model GuildSettings {
   aiModel            String   @default("gemini-1.5-flash")
 
   logChannelId            String?
+  serverLogChannelId      String?
   antiNukeLogChannelId    String?
   welcomeChannelId        String?
   welcomeMessage          String?

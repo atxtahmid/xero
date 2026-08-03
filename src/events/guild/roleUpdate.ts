@@ -5,6 +5,7 @@ import {
 
 import antiNukeHelper from "../../utils/antiNukeHelper.js";
 import { AntiNukeAction } from "../../utils/antiNukeActions.js";
+import serverLogService from "../../services/serverLogService.js";
 
 export default {
   name: Events.GuildRoleUpdate,
@@ -17,5 +18,7 @@ export default {
       newRole.guild,
       AntiNukeAction.ROLE_UPDATE,
     );
+
+    await serverLogService.logRoleUpdate(newRole.guild, oldRole, newRole);
   },
 };

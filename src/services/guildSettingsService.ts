@@ -58,6 +58,15 @@ class GuildSettingsService {
       data: { searchEnabled: enabled },
     });
   }
+
+  async setServerLogChannel(guildId: string, channelId: string | null) {
+    await this.ensureGuildSetup(guildId);
+
+    return db.guildSettings.update({
+      where: { guildId },
+      data: { serverLogChannelId: channelId },
+    });
+  }
 }
 
 export default new GuildSettingsService();

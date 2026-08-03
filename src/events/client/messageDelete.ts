@@ -1,5 +1,6 @@
 import { Events, type Message, type PartialMessage } from "discord.js";
 import logger from "../../services/logger.js";
+import serverLogService from "../../services/serverLogService.js";
 import type { Event } from "../../types/Event.js";
 
 const event: Event<Events.MessageDelete> = {
@@ -27,12 +28,19 @@ const event: Event<Events.MessageDelete> = {
     }
 
     try {
-      // Logic space reserved for production features:
-      // - Logging: Send the deleted content and author to the log channel.
+      logger.info(`Message deleted in ${message.guild.name} by ${message.author.tag}`);
+
+      await serverLogService.logMessageDelete(
+        message.guild,
+        message.channelId,
+        message.author,
+        message.content,
+        message.attachments.map((attachment) => attachment.url),
+      );
+
+      // Still reserved for future work:
       // - Anti-Nuke: Increment deletion counter for mass-deletion protection.
       // - AI Sync: Optionally remove the message from user context if needed.
-      
-      logger.info(`Message deleted in ${message.guild.name} by ${message.author.tag}`);
     } catch (error) {
       logger.error("Error processing MessageDelete event:", error);
     }

@@ -6,6 +6,7 @@ import {
 import antiNukeHelper from "../../utils/antiNukeHelper.js";
 import { AntiNukeAction } from "../../utils/antiNukeActions.js";
 import logger from "../../services/logger.js";
+import serverLogService from "../../services/serverLogService.js";
 
 export default {
   name: Events.GuildMemberAdd,
@@ -14,6 +15,7 @@ export default {
     member: GuildMember,
   ): Promise<void> {
     if (!member.user.bot) {
+      await serverLogService.logMemberJoin(member.guild, member);
       return;
     }
 

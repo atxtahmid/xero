@@ -5,6 +5,7 @@ import {
 
 import antiNukeHelper from "../../utils/antiNukeHelper.js";
 import { AntiNukeAction } from "../../utils/antiNukeActions.js";
+import serverLogService from "../../services/serverLogService.js";
 
 export default {
   name: Events.GuildRoleCreate,
@@ -16,5 +17,7 @@ export default {
       role.guild,
       AntiNukeAction.ROLE_CREATE,
     );
+
+    await serverLogService.logRoleCreate(role.guild, role);
   },
 };
