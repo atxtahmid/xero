@@ -1,9 +1,9 @@
 import {
   ButtonInteraction,
-  PermissionFlagsBits,
   TextChannel,
 } from "discord.js";
 import ticketService from "../../services/ticketService.js";
+import { isTicketStaff } from "../../utils/ticketPermissions.js";
 
 export default async function ticketUnlockButton(
   interaction: ButtonInteraction,
@@ -28,10 +28,7 @@ export default async function ticketUnlockButton(
     return;
   }
 
-  const isStaff =
-    interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels) ||
-    (ticket.panel.supportRoleId &&
-      (interaction.member?.roles as any).cache.has(ticket.panel.supportRoleId));
+  const isStaff = isTicketStaff(interaction, ticket.panel.supportRoleId);
 
   if (!isStaff) {
     await interaction.editReply({

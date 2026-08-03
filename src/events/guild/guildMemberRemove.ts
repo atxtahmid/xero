@@ -16,15 +16,10 @@ export default {
       return;
     }
 
-    /*
-     * Wait a little.
-     * Discord audit logs are usually delayed by
-     * a few hundred milliseconds.
-     */
-    await new Promise((resolve) =>
-      setTimeout(resolve, 1500),
-    );
-
+    // Audit-log read delay is handled once, inside
+    // antiNukeHelper.handle() (AUDIT_LOG_DELAY) — every other Anti-Nuke
+    // event handler relies on that same internal delay rather than
+    // adding its own on top.
     await antiNukeHelper.handle(
       member.guild,
       AntiNukeAction.MASS_KICK,

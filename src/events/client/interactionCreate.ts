@@ -96,6 +96,19 @@ async function handleSlashCommand(
 
   if (!command) return;
 
+  // Guild-only enforcement — belt-and-suspenders alongside each command's
+  // own `if (!interaction.guild)` check. Every command that sets
+  // `guildOnly: true` currently guards this itself too, but this closes
+  // the gap for any future command that forgets to.
+  if (command.guildOnly && !interaction.guild) {
+    await interaction.reply({
+      content: "❌ This command can only be used in a server.",
+      ephemeral: true,
+    });
+
+    return;
+  }
+
   // Permission check
   const permitted = await hasPermission(
     interaction,

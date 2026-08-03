@@ -7,6 +7,7 @@ import {
   TextChannel,
 } from "discord.js";
 import ticketService from "../../services/ticketService.js";
+import logger from "../../services/logger.js";
 
 export default async function ticketClaimButton(
   interaction: ButtonInteraction,
@@ -115,7 +116,7 @@ export default async function ticketClaimButton(
       content: `🙋 ${interaction.user} has claimed this ticket.`,
     });
   } catch (error) {
-    console.error("[Ticket Claim Button]", error);
+    logger.error("[Ticket Claim Button]", error);
 
     await interaction.editReply({
       content: "❌ Failed to claim the ticket.",

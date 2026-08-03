@@ -5,6 +5,7 @@ import {
 
 import antiNukeHelper from "../../utils/antiNukeHelper.js";
 import { AntiNukeAction } from "../../utils/antiNukeActions.js";
+import logger from "../../services/logger.js";
 
 export default {
   name: Events.GuildMemberAdd,
@@ -31,11 +32,11 @@ export default {
         "Anti-Nuke: Unauthorized bot added.",
       );
 
-      console.log(
+      logger.info(
         `[ANTI-NUKE] Removed bot ${member.user.tag}`,
       );
     } catch (error) {
-      console.error(
+      logger.error(
         "[ANTI-NUKE] Failed to remove bot:",
         error,
       );

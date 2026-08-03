@@ -6,6 +6,7 @@ import {
 
 import type { Command } from "../../types/Command.js";
 import ticketService from "../../services/ticketService.js";
+import { isTicketStaff } from "../../utils/ticketPermissions.js";
 
 const command: Command = {
   guildOnly: true,
@@ -36,9 +37,7 @@ const command: Command = {
     }
 
     // Permission Check: ManageChannels OR Support Role
-    const isStaff = 
-      interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels) ||
-      (ticket.panel.supportRoleId && (interaction.member?.roles as any).cache.has(ticket.panel.supportRoleId));
+    const isStaff = isTicketStaff(interaction, ticket.panel.supportRoleId);
 
     if (!isStaff) {
       await interaction.editReply({ content: "❌ You do not have permission to manage this ticket." });

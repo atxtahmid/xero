@@ -7,6 +7,7 @@ import {
 
 import { createCase } from "../../services/caseService.js";
 import { sendModLog } from "../../services/modLogService.js";
+import logger from "../../services/logger.js";
 import {
   createSuccessEmbed,
   sendModerationDM,
@@ -110,7 +111,7 @@ const command: Command = {
         ],
       });
     } catch (error) {
-      console.error("[RemoveTimeout Command] Error:", error);
+      logger.error("[RemoveTimeout Command] Error:", error);
       await interaction.editReply({ content: "❌ Failed to remove the timeout." });
     }
   },

@@ -7,6 +7,7 @@ import {
 
 import { Permission, type Command } from "../../types/Command.js";
 import { sendModLog } from "../../services/modLogService.js";
+import logger from "../../services/logger.js";
 
 const command: Command = {
   permissions: [Permission.MODERATOR],
@@ -61,7 +62,7 @@ const command: Command = {
         caseId: "N/A",
       });
     } catch (error) {
-      console.error("[Say Command] Error:", error);
+      logger.error("[Say Command] Error:", error);
       await interaction.reply({ content: "❌ Failed to send message.", ephemeral: true });
     }
   },

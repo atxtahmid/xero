@@ -10,6 +10,7 @@ import {
   Permission,
   type Command,
 } from "../../types/Command.js";
+import logger from "../../services/logger.js";
 
 const command: Command = {
   permissions: [
@@ -97,7 +98,7 @@ const command: Command = {
         ephemeral: true,
       });
     } catch (error) {
-      console.error("[Nuke Command] Error:", error);
+      logger.error("[Nuke Command] Error:", error);
 
       await interaction.followUp({
         content:

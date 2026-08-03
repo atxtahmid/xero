@@ -7,6 +7,7 @@ import {
 } from "discord.js";
 import type { Command } from "../../types/Command.js";
 import ticketService from "../../services/ticketService.js";
+import logger from "../../services/logger.js";
 
 const command: Command = {
   guildOnly: true,
@@ -101,7 +102,7 @@ const command: Command = {
         files: [attachment],
       });
     } catch (error) {
-      console.error("[Ticket Transcript]", error);
+      logger.error("[Ticket Transcript]", error);
 
       await interaction.editReply({
         content: "❌ Failed to generate transcript.",

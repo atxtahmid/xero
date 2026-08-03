@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import type { Command } from "../../types/Command.js";
 import ticketService from "../../services/ticketService.js";
+import logger from "../../services/logger.js";
 
 const command: Command = {
   guildOnly: true,
@@ -116,7 +117,7 @@ const command: Command = {
         content: `🔓 Ticket reopened by ${interaction.user}.`,
       });
     } catch (error) {
-      console.error("[Ticket Reopen]", error);
+      logger.error("[Ticket Reopen]", error);
 
       await interaction.editReply({
         content:

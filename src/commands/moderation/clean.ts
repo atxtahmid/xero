@@ -7,6 +7,7 @@ import {
 
 import { Permission, type Command } from "../../types/Command.js";
 import { sendModLog } from "../../services/modLogService.js";
+import logger from "../../services/logger.js";
 
 const command: Command = {
   permissions: [Permission.MODERATOR],
@@ -93,7 +94,7 @@ const command: Command = {
         caseId: "N/A",
       });
     } catch (error) {
-      console.error("[Clean Command] Error:", error);
+      logger.error("[Clean Command] Error:", error);
       await interaction.editReply("❌ An error occurred while trying to clean messages. Ensure I have Manage Messages permission.");
     }
   },

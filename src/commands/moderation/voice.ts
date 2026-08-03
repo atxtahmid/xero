@@ -4,6 +4,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { sendModLog } from "../../services/modLogService.js";
+import logger from "../../services/logger.js";
 import { Permission, type Command } from "../../types/Command.js";
 import { canModerate, fetchMember } from "../../utils/moderation.js";
 
@@ -132,7 +133,7 @@ const command: Command = {
         caseId: "N/A",
       });
     } catch (error) {
-      console.error(error);
+      logger.error("[Voice Command] Error:", error);
 
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({

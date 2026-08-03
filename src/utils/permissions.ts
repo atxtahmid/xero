@@ -1,9 +1,11 @@
 import {
   ChatInputCommandInteraction,
+  GuildMember,
   PermissionFlagsBits,
 } from "discord.js";
 
 import { Permission } from "../types/Command.js";
+import db from "../services/database.js";
 import { isHighlyTrusted } from "./auth.js";
 import { isGlobalOwner } from "./globalOwner.js";
 import { isTrustedOwner } from "./ownerTrust.js";
@@ -58,10 +60,50 @@ export async function hasPermission(
     return true;
   }
 
+  // Custom mod/admin roles — GuildSettings.adminRoleId / modRoleId,
+  // configured via /settings-adminrole and /settings-modrole. These were
+  // defined in the schema but never actually read anywhere. Only usable
+  // when `interaction.member` is the full cached GuildMember (it can
+  // instead be the raw, uncached partial shape, whose `.roles` has no
+  // `.cache`) — falls back to the Discord-permission-bit checks below
+  // otherwise, same as everything else in this function.
+  const member =
+    interaction.member instanceof GuildMember
+      ? interaction.member
+      : null;
+
+  let hasAdminRole = false;
+  let hasModRole = false;
+
+  if (member) {
+    const settings = await db.guildSettings.findUnique({
+      where: { guildId: guild.id },
+      select: {
+        adminRoleId: true,
+        modRoleId: true,
+      },
+    });
+
+    hasAdminRole =
+      !!settings?.adminRoleId &&
+      member.roles.cache.has(settings.adminRoleId);
+
+    hasModRole =
+      !!settings?.modRoleId &&
+      member.roles.cache.has(settings.modRoleId);
+  }
+
+  // The configured admin role is a full bypass, same as the real
+  // Administrator permission checked just above.
+  if (hasAdminRole) {
+    return true;
+  }
+
   for (const permission of permissions) {
     switch (permission) {
       case Permission.MODERATOR:
         if (
+          hasModRole ||
           memberPermissions.has(
             PermissionFlagsBits.ModerateMembers,
           ) ||
@@ -103,10 +145,10 @@ export async function hasPermission(
 
       case Permission.ADMIN:
       case Permission.CONFIG:
-        // Already covered by the Administrator bypass above. Listed
-        // explicitly (instead of relying on `default`) so every
-        // Permission enum value is accounted for on purpose, not by
-        // accident.
+        // Already covered by the Administrator bypass and the custom
+        // admin-role bypass above. Listed explicitly (instead of relying
+        // on `default`) so every Permission enum value is accounted for
+        // on purpose, not by accident.
         break;
 
       default:

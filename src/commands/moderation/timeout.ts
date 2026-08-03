@@ -7,6 +7,7 @@ import {
 
 import { createCase } from "../../services/caseService.js";
 import { sendModLog } from "../../services/modLogService.js";
+import logger from "../../services/logger.js";
 import {
   createSuccessEmbed,
   sendModerationDM,
@@ -88,7 +89,7 @@ const command: Command = {
     try {
       await member.timeout(durationMs, `${interaction.user.tag}: ${reason}`);
     } catch (error) {
-      console.error("[Timeout Command] Error:", error);
+      logger.error("[Timeout Command] Error:", error);
       await interaction.editReply({ content: "❌ Failed to execute the timeout." });
       return;
     }

@@ -7,6 +7,7 @@ import {
 import { Permission, type Command } from "../../types/Command.js";
 import { canModerate, fetchMember } from "../../utils/moderation.js";
 import { sendModLog } from "../../services/modLogService.js";
+import logger from "../../services/logger.js";
 
 const command: Command = {
   permissions: [Permission.MODERATOR],
@@ -77,7 +78,7 @@ const command: Command = {
         caseId: "N/A",
       });
     } catch (error) {
-      console.error("[Nickname Command] Error:", error);
+      logger.error("[Nickname Command] Error:", error);
       await interaction.reply({
         content: "❌ I cannot change that user's nickname. Their highest role may be above mine.",
         ephemeral: true,

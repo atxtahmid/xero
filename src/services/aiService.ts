@@ -2,6 +2,7 @@ import aiContextService from "./aiContextService.js";
 import chatHistoryService from "./chatHistoryService.js";
 import geminiService from "./geminiService.js";
 import promptBuilder from "./promptBuilder.js";
+import tavilyService from "./tavilyService.js";
 import logger from "./logger.js";
 
 class AIService {
@@ -11,6 +12,7 @@ class AIService {
     userId: string,
     guildId: string,
     rawPrompt: string,
+    searchEnabled = false,
   ): Promise<string> {
     try {
       const prompt = rawPrompt.trim();
@@ -29,7 +31,16 @@ class AIService {
         prompt,
       );
 
-      const payload = promptBuilder.build(context);
+      // Search only runs if the guild has it enabled AND the bot process
+      // has a Tavily key configured — tavilyService.search() itself is
+      // safe to call unconditionally (it no-ops to [] either way), but
+      // skipping the call entirely when the guild has it disabled avoids
+      // burning a request/latency for nothing.
+      const searchResults = searchEnabled
+        ? await tavilyService.search(prompt)
+        : [];
+
+      const payload = promptBuilder.build(context, searchResults);
 
       const response = await geminiService.generate(payload);
 

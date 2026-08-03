@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import type { Command } from "../../types/Command.js";
 import ticketService from "../../services/ticketService.js";
+import logger from "../../services/logger.js";
 
 const command: Command = {
   guildOnly: true,
@@ -131,7 +132,7 @@ const command: Command = {
         content: `✅ Renamed ticket to **${sanitizedName}**.`,
       });
     } catch (error) {
-      console.error("[Ticket Rename]", error);
+      logger.error("[Ticket Rename]", error);
 
       await interaction.editReply({
         content:

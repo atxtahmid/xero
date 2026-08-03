@@ -13,7 +13,6 @@ const ACTIVE_STATUSES: TicketStatus[] = [
 const ticketInclude = {
   panel: true,
   creator: true,
-  claimedBy: true,
 } as const;
 
 class TicketService {

@@ -10,6 +10,7 @@ import {
 } from "discord.js";
 
 import db from "../../services/database.js";
+import logger from "../../services/logger.js";
 import { Permission, type Command } from "../../types/Command.js";
 
 const command: Command = {
@@ -156,7 +157,7 @@ const command: Command = {
         content: `✅ Ticket panel successfully created in ${channel}.`,
       });
     } catch (error) {
-      console.error("[TicketPanel] Creation failed:", error);
+      logger.error("[TicketPanel] Creation failed:", error);
       await interaction.editReply({
         content: "❌ Failed to create panel. Check bot permissions.",
       });

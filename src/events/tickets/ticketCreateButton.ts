@@ -9,6 +9,7 @@ import {
 } from "discord.js";
 
 import db from "../../services/database.js";
+import logger from "../../services/logger.js";
 import notificationService from "../../services/notificationService.js";
 import ticketService from "../../services/ticketService.js";
 
@@ -138,6 +139,6 @@ export default async function ticketCreateButton(
   notificationService
     .checkAndNotifyTicketSupportRole(channel, panel.supportRoleId)
     .catch((error) => {
-      console.error("[Ticket Create] Support role notification failed:", error);
+      logger.error("[Ticket Create] Support role notification failed:", error);
     });
 }

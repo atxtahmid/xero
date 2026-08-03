@@ -1,5 +1,7 @@
-import { ButtonInteraction, PermissionFlagsBits, TextChannel } from "discord.js";
+import { ButtonInteraction, TextChannel } from "discord.js";
+import logger from "../../services/logger.js";
 import ticketService from "../../services/ticketService.js";
+import { isTicketStaff } from "../../utils/ticketPermissions.js";
 
 const deleting = new Set<string>();
 const DELETE_DELAY = 5000;
@@ -15,10 +17,7 @@ export default async function ticketDeleteButton(interaction: ButtonInteraction)
     return;
   }
 
-  const isStaff =
-    interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels) ||
-    (ticket.panel.supportRoleId &&
-      (interaction.member?.roles as any).cache.has(ticket.panel.supportRoleId));
+  const isStaff = isTicketStaff(interaction, ticket.panel.supportRoleId);
 
   if (!isStaff) {
     await interaction.editReply({ content: "❌ Permission denied." });
@@ -52,7 +51,7 @@ export default async function ticketDeleteButton(interaction: ButtonInteraction)
       await ticketService.delete(interaction.channelId);
       await interaction.channel?.delete().catch(() => {});
     } catch (error) {
-      console.error("[Ticket Delete Button]", error);
+      logger.error("[Ticket Delete Button]", error);
     } finally {
       deleting.delete(interaction.channelId);
     }

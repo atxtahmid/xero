@@ -6,6 +6,7 @@ import {
 
 import { Permission, type Command } from "../../types/Command.js";
 import { sendModLog } from "../../services/modLogService.js";
+import logger from "../../services/logger.js";
 
 const command: Command = {
   permissions: [Permission.MODERATOR],
@@ -63,7 +64,7 @@ const command: Command = {
       });
 
     } catch (error) {
-      console.error("[Purge Command] Error:", error);
+      logger.error("[Purge Command] Error:", error);
       await interaction.editReply({ content: "❌ An error occurred while trying to purge messages." });
     }
   },

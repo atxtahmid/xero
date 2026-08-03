@@ -1,5 +1,6 @@
-import { ButtonInteraction, PermissionFlagsBits, TextChannel } from "discord.js";
+import { ButtonInteraction, TextChannel } from "discord.js";
 import ticketService from "../../services/ticketService.js";
+import { isTicketStaff } from "../../utils/ticketPermissions.js";
 
 export default async function ticketLockButton(interaction: ButtonInteraction): Promise<void> {
   if (!interaction.guild || !(interaction.channel instanceof TextChannel)) return;
@@ -12,10 +13,7 @@ export default async function ticketLockButton(interaction: ButtonInteraction): 
     return;
   }
 
-  const isStaff =
-    interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels) ||
-    (ticket.panel.supportRoleId &&
-      (interaction.member?.roles as any).cache.has(ticket.panel.supportRoleId));
+  const isStaff = isTicketStaff(interaction, ticket.panel.supportRoleId);
 
   if (!isStaff) {
     await interaction.editReply({ content: "❌ Permission denied." });

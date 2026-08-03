@@ -12,6 +12,7 @@ import {
   sendModerationDM,
 } from "../../services/moderationService.js";
 import tempBanService from "../../services/tempBanService.js";
+import logger from "../../services/logger.js";
 import { Permission, type Command } from "../../types/Command.js";
 import { canModerate, fetchMember } from "../../utils/moderation.js";
 
@@ -121,7 +122,7 @@ const command: Command = {
         ],
       });
     } catch (error) {
-      console.error("[Tempban Command] Error:", error);
+      logger.error("[Tempban Command] Error:", error);
       await interaction.editReply({ content: "❌ Failed to execute temporary ban." });
     }
   },
