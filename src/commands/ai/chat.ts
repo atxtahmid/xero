@@ -1,7 +1,9 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import { Permission, type Command } from "../../types/Command.js";
+import aiLogService from "../../services/aiLogService.js";
 import aiService from "../../services/aiService.js";
 import guildSettingsService from "../../services/guildSettingsService.js";
+import logger from "../../services/logger.js";
 
 const command: Command = {
   permissions: [Permission.USER],
@@ -39,6 +41,22 @@ const command: Command = {
     const response = await aiService.chat(interaction.user.id, interaction.guild.id, prompt, settings.searchEnabled);
 
     await interaction.editReply(response);
+
+    // Fire-and-forget — resolveLogChannel() no-ops gracefully if no AI
+    // log channel is configured, so this is safe to call unconditionally
+    // on every /chat use.
+    aiLogService
+      .logChatInteraction(
+        interaction.guild,
+        interaction.channelId,
+        interaction.user,
+        prompt,
+        response,
+        settings.searchEnabled,
+      )
+      .catch((error) => {
+        logger.error("[AI Log] Failed to log chat interaction:", error);
+      });
   },
 };
 

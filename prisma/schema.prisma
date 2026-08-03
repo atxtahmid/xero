@@ -81,6 +81,11 @@ model GuildSettings {
   logChannelId            String?
   serverLogChannelId      String?
   antiNukeLogChannelId    String?
+  // AI Logs — audit trail of /chat usage (who, where, what was asked,
+  // whether search was used). Separate channel from the others so a
+  // server can route AI usage monitoring somewhere different from
+  // general server activity.
+  aiLogChannelId          String?
   welcomeChannelId        String?
   welcomeMessage          String?
   leaveMessage            String?
