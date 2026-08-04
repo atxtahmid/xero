@@ -5,14 +5,14 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import { createCase } from "../../services/caseService.js";
-import { sendModLog } from "../../services/modLogService.js";
+import { createCase } from "../../services/moderation/caseService.js";
+import { sendModLog } from "../../services/moderation/modLogService.js";
 import {
   createSuccessEmbed,
   sendModerationDM,
-} from "../../services/moderationService.js";
-import tempBanService from "../../services/tempBanService.js";
-import logger from "../../services/logger.js";
+} from "../../services/moderation/moderationService.js";
+import tempBanService from "../../services/moderation/tempBanService.js";
+import logger from "../../logger/logger.js";
 import { Permission, type Command } from "../../types/Command.js";
 import { canModerate, fetchMember } from "../../utils/moderation.js";
 

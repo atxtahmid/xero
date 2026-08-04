@@ -5,9 +5,9 @@ import {
   TextChannel,
 } from "discord.js";
 
-import logger from "../../services/logger.js";
-import ticketLogService from "../../services/ticketLogService.js";
-import ticketService from "../../services/ticketService.js";
+import logger from "../../logger/logger.js";
+import ticketLogService from "../../services/tickets/ticketLogService.js";
+import ticketService from "../../services/tickets/ticketService.js";
 import type { Command } from "../../types/Command.js";
 
 const DELETE_DELAY = 5000;

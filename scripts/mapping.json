@@ -1,0 +1,78 @@
+{
+  "commands/antinuke/ownerBypass.ts": "commands/owner/ownerBypass.ts",
+  "commands/general/about.ts": "commands/utility/about.ts",
+  "commands/general/help.ts": "commands/utility/help.ts",
+  "commands/general/ping.ts": "commands/utility/ping.ts",
+
+  "events/client/guildMemberAdd.ts": "events/member/guildMemberAdd.ts",
+  "events/client/guildMemberRemove.ts": "events/member/guildMemberRemove.ts",
+  "events/client/interactionCreate.ts": "events/interaction/interactionCreate.ts",
+  "events/client/messageCreate.ts": "events/message/messageCreate.ts",
+  "events/client/messageDelete.ts": "events/message/messageDelete.ts",
+  "events/client/messageDeleteBulk.ts": "events/message/messageDeleteBulk.ts",
+  "events/client/messageUpdate.ts": "events/message/messageUpdate.ts",
+
+  "events/guild/guildMemberAdd.ts": "events/member/antiNukeGuildMemberAdd.ts",
+  "events/guild/guildMemberRemove.ts": "events/member/antiNukeGuildMemberRemove.ts",
+  "events/guild/guildMemberUpdate.ts": "events/member/guildMemberUpdate.ts",
+  "events/guild/voiceStateUpdate.ts": "events/voice/voiceStateUpdate.ts",
+
+  "events/tickets/ticketClaimButton.ts": "interactions/tickets/ticketClaimButton.ts",
+  "events/tickets/ticketCloseButton.ts": "interactions/tickets/ticketCloseButton.ts",
+  "events/tickets/ticketCreateButton.ts": "interactions/tickets/ticketCreateButton.ts",
+  "events/tickets/ticketDeleteButton.ts": "interactions/tickets/ticketDeleteButton.ts",
+  "events/tickets/ticketLockButton.ts": "interactions/tickets/ticketLockButton.ts",
+  "events/tickets/ticketReopenButton.ts": "interactions/tickets/ticketReopenButton.ts",
+  "events/tickets/ticketUnclaimButton.ts": "interactions/tickets/ticketUnclaimButton.ts",
+  "events/tickets/ticketUnlockButton.ts": "interactions/tickets/ticketUnlockButton.ts",
+
+  "services/aiContextService.ts": "services/ai/aiContextService.ts",
+  "services/aiService.ts": "services/ai/aiService.ts",
+  "services/geminiService.ts": "services/ai/geminiService.ts",
+  "services/promptBuilder.ts": "services/ai/promptBuilder.ts",
+  "services/tavilyService.ts": "services/ai/tavilyService.ts",
+  "services/chatHistoryService.ts": "services/ai/chatHistoryService.ts",
+
+  "services/ticketService.ts": "services/tickets/ticketService.ts",
+  "services/ticketLogService.ts": "services/tickets/ticketLogService.ts",
+
+  "services/caseService.ts": "services/moderation/caseService.ts",
+  "services/warningService.ts": "services/moderation/warningService.ts",
+  "services/moderationService.ts": "services/moderation/moderationService.ts",
+  "services/modLogService.ts": "services/moderation/modLogService.ts",
+  "services/punishmentService.ts": "services/moderation/punishmentService.ts",
+  "services/tempBanService.ts": "services/moderation/tempBanService.ts",
+  "services/tempBanScheduler.ts": "services/moderation/tempBanScheduler.ts",
+
+  "services/antiNukeCoOwnerService.ts": "services/antinuke/antiNukeCoOwnerService.ts",
+  "services/antiNukeLogService.ts": "services/antinuke/antiNukeLogService.ts",
+  "services/antiNukeSettingsService.ts": "services/antinuke/antiNukeSettingsService.ts",
+  "services/antiNukeWhitelistService.ts": "services/antinuke/antiNukeWhitelistService.ts",
+  "services/auditLogService.ts": "services/antinuke/auditLogService.ts",
+  "services/lockdownService.ts": "services/antinuke/lockdownService.ts",
+  "services/lockdownScheduler.ts": "services/antinuke/lockdownScheduler.ts",
+  "utils/antiNukeHelper.ts": "services/antinuke/antiNukeHelper.ts",
+
+  "services/backupService.ts": "services/backup/backupService.ts",
+  "services/backupScheduler.ts": "services/backup/backupScheduler.ts",
+
+  "services/restoreService.ts": "services/recovery/restoreService.ts",
+
+  "services/serverLogService.ts": "services/logging/serverLogService.ts",
+  "services/notificationService.ts": "services/logging/notificationService.ts",
+  "services/aiLogService.ts": "services/logging/aiLogService.ts",
+
+  "services/userService.ts": "services/database/userService.ts",
+  "services/guildService.ts": "services/database/guildService.ts",
+  "services/guildSettingsService.ts": "services/database/guildSettingsService.ts",
+  "services/database.ts": "database/prisma.ts",
+
+  "utils/lockdownTracker.ts": "managers/lockdownTracker.ts",
+  "utils/thresholdTracker.ts": "managers/thresholdTracker.ts",
+
+  "utils/antiNukeActions.ts": "constants/antiNukeActions.ts",
+
+  "services/logger.ts": "logger/logger.ts",
+
+  "events/tickets/index.ts": null
+}

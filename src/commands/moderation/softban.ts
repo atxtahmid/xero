@@ -7,13 +7,13 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import { createCase } from "../../services/caseService.js";
-import logger from "../../services/logger.js";
-import { sendModLog } from "../../services/modLogService.js";
+import { createCase } from "../../services/moderation/caseService.js";
+import logger from "../../logger/logger.js";
+import { sendModLog } from "../../services/moderation/modLogService.js";
 import {
   createSuccessEmbed,
   sendModerationDM,
-} from "../../services/moderationService.js";
+} from "../../services/moderation/moderationService.js";
 import {
   Permission,
   type Command,

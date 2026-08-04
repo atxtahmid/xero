@@ -3,7 +3,7 @@ import { readdirSync } from "node:fs";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import logger from "../services/logger.js";
+import logger from "../logger/logger.js";
 import type { Command } from "../types/Command.js";
 
 const __filename = fileURLToPath(import.meta.url);

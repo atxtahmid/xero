@@ -4,7 +4,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import db from "../../services/database.js";
+import db from "../../database/prisma.js";
 import { Permission, type Command } from "../../types/Command.js";
 
 const command: Command = {

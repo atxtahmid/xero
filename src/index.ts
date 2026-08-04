@@ -9,11 +9,11 @@ import {
 import config from "./config/index.js";
 import { loadCommands } from "./handlers/commandHandler.js";
 import { loadEvents } from "./handlers/eventHandler.js";
-import backupScheduler from "./services/backupScheduler.js";
-import lockdownScheduler from "./services/lockdownScheduler.js";
-import tempBanScheduler from "./services/tempBanScheduler.js";
-import logger from "./services/logger.js";
-import notificationService from "./services/notificationService.js";
+import backupScheduler from "./services/backup/backupScheduler.js";
+import lockdownScheduler from "./services/antinuke/lockdownScheduler.js";
+import tempBanScheduler from "./services/moderation/tempBanScheduler.js";
+import logger from "./logger/logger.js";
+import notificationService from "./services/logging/notificationService.js";
 import type { Command } from "./types/Command.js";
 
 declare module "discord.js" {

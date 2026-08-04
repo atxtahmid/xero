@@ -5,7 +5,7 @@ import { dirname, extname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import config from "./config/index.js";
-import logger from "./services/logger.js";
+import logger from "./logger/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

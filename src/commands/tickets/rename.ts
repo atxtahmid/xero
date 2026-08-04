@@ -5,8 +5,8 @@ import {
   TextChannel,
 } from "discord.js";
 import type { Command } from "../../types/Command.js";
-import ticketService from "../../services/ticketService.js";
-import logger from "../../services/logger.js";
+import ticketService from "../../services/tickets/ticketService.js";
+import logger from "../../logger/logger.js";
 
 const command: Command = {
   guildOnly: true,

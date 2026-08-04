@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from "discord.js";
-import antiNukeSettingsService from "../../services/antiNukeSettingsService.js";
-import db from "../../services/database.js";
+import antiNukeSettingsService from "../../services/antinuke/antiNukeSettingsService.js";
+import db from "../../database/prisma.js";
 import { isHighlyTrusted } from "../../utils/auth.js";
 import { Permission } from "../../types/Command.js";
 

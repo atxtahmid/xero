@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
-import backupService from "../../services/backupService.js";
+import backupService from "../../services/backup/backupService.js";
 import { isHighlyTrusted } from "../../utils/auth.js";
 import { Permission } from "../../types/Command.js";
 

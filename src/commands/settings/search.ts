@@ -4,8 +4,8 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import guildSettingsService from "../../services/guildSettingsService.js";
-import tavilyService from "../../services/tavilyService.js";
+import guildSettingsService from "../../services/database/guildSettingsService.js";
+import tavilyService from "../../services/ai/tavilyService.js";
 import { Permission, type Command } from "../../types/Command.js";
 
 const command: Command = {

@@ -8,7 +8,7 @@ import {
 
 import { Permission, type Command } from "../../types/Command.js";
 import { canModerate, fetchMember } from "../../utils/moderation.js";
-import { sendModLog } from "../../services/modLogService.js";
+import { sendModLog } from "../../services/moderation/modLogService.js";
 
 const command: Command = {
   permissions: [Permission.MODERATOR],

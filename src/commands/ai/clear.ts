@@ -7,7 +7,7 @@ import {
   Permission,
   type Command,
 } from "../../types/Command.js";
-import chatHistoryService from "../../services/chatHistoryService.js";
+import chatHistoryService from "../../services/ai/chatHistoryService.js";
 
 const command: Command = {
   permissions: [

@@ -1,9 +1,9 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import { Permission, type Command } from "../../types/Command.js";
-import aiLogService from "../../services/aiLogService.js";
-import aiService from "../../services/aiService.js";
-import guildSettingsService from "../../services/guildSettingsService.js";
-import logger from "../../services/logger.js";
+import aiLogService from "../../services/logging/aiLogService.js";
+import aiService from "../../services/ai/aiService.js";
+import guildSettingsService from "../../services/database/guildSettingsService.js";
+import logger from "../../logger/logger.js";
 
 const command: Command = {
   permissions: [Permission.USER],

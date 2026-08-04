@@ -4,8 +4,8 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import db from "../../services/database.js";
-import lockdownService from "../../services/lockdownService.js";
+import db from "../../database/prisma.js";
+import lockdownService from "../../services/antinuke/lockdownService.js";
 import { Permission, type Command } from "../../types/Command.js";
 import { isHighlyTrusted } from "../../utils/auth.js";
 

@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
-import antiNukeCoOwnerService from "../../services/antiNukeCoOwnerService.js";
+import antiNukeCoOwnerService from "../../services/antinuke/antiNukeCoOwnerService.js";
 import { isGlobalOwner } from "../../utils/globalOwner.js";
 import { isTrustedOwner } from "../../utils/ownerTrust.js";
 import { Permission } from "../../types/Command.js";

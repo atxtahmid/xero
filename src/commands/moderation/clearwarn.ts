@@ -4,10 +4,10 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import warningService from "../../services/warningService.js";
+import warningService from "../../services/moderation/warningService.js";
 import { Permission, type Command } from "../../types/Command.js";
 import { canModerate, fetchMember } from "../../utils/moderation.js";
-import { sendModLog } from "../../services/modLogService.js";
+import { sendModLog } from "../../services/moderation/modLogService.js";
 
 const command: Command = {
   permissions: [Permission.MODERATOR],

@@ -1,9 +1,9 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import { PunishmentType } from "@prisma/client";
 import { Permission, type Command } from "../../types/Command.js";
-import antiNukeSettingsService from "../../services/antiNukeSettingsService.js";
+import antiNukeSettingsService from "../../services/antinuke/antiNukeSettingsService.js";
 import { isHighlyTrusted } from "../../utils/auth.js";
-import { sendModLog } from "../../services/modLogService.js";
+import { sendModLog } from "../../services/moderation/modLogService.js";
 
 const command: Command = {
   permissions: [Permission.SERVER_OWNER],

@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
-import antiNukeWhitelistService from "../../services/antiNukeWhitelistService.js";
-import { AntiNukeAction } from "../../utils/antiNukeActions.js";
+import antiNukeWhitelistService from "../../services/antinuke/antiNukeWhitelistService.js";
+import { AntiNukeAction } from "../../constants/antiNukeActions.js";
 import { Permission, type Command } from "../../types/Command.js";
 import { isHighlyTrusted } from "../../utils/auth.js";
 

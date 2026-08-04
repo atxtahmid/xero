@@ -1,6 +1,6 @@
 import { Guild } from "discord.js";
 
-import db from "../services/database.js";
+import db from "../database/prisma.js";
 
 /**
  * Resolves which user ID this bot currently treats as "the trusted

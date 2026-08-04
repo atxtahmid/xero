@@ -10,16 +10,16 @@ import {
 
 import {
   createCase,
-} from "../../services/caseService.js";
+} from "../../services/moderation/caseService.js";
 
 import {
   sendModLog,
-} from "../../services/modLogService.js";
+} from "../../services/moderation/modLogService.js";
 
 import {
   createSuccessEmbed,
   sendModerationDM,
-} from "../../services/moderationService.js";
+} from "../../services/moderation/moderationService.js";
 
 import {
   Permission,

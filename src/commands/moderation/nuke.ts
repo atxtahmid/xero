@@ -10,7 +10,7 @@ import {
   Permission,
   type Command,
 } from "../../types/Command.js";
-import logger from "../../services/logger.js";
+import logger from "../../logger/logger.js";
 
 const command: Command = {
   permissions: [

@@ -5,7 +5,7 @@ import {
 } from "discord.js";
 
 import type { Command } from "../../types/Command.js";
-import ticketService from "../../services/ticketService.js";
+import ticketService from "../../services/tickets/ticketService.js";
 import { isTicketStaff } from "../../utils/ticketPermissions.js";
 
 const command: Command = {

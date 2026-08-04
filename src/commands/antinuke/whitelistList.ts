@@ -8,7 +8,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import antiNukeWhitelistService from "../../services/antiNukeWhitelistService.js";
+import antiNukeWhitelistService from "../../services/antinuke/antiNukeWhitelistService.js";
 import { isHighlyTrusted } from "../../utils/auth.js";
 import { Permission } from "../../types/Command.js";
 

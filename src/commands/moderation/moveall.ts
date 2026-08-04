@@ -7,7 +7,7 @@ import {
 } from "discord.js";
 
 import { Permission, type Command } from "../../types/Command.js";
-import { sendModLog } from "../../services/modLogService.js";
+import { sendModLog } from "../../services/moderation/modLogService.js";
 
 const command: Command = {
   permissions: [Permission.MODERATOR],

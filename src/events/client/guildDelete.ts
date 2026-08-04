@@ -3,8 +3,8 @@ import {
   type Guild,
 } from "discord.js";
 
-import db from "../../services/database.js";
-import logger from "../../services/logger.js";
+import db from "../../database/prisma.js";
+import logger from "../../logger/logger.js";
 import type { Event } from "../../types/Event.js";
 
 const event: Event<Events.GuildDelete> = {

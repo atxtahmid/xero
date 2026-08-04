@@ -7,10 +7,10 @@ import {
   ComponentType 
 } from "discord.js";
 
-import restoreService from "../../services/restoreService.js";
+import restoreService from "../../services/recovery/restoreService.js";
 import { isHighlyTrusted } from "../../utils/auth.js";
 import { Permission } from "../../types/Command.js";
-import { sendModLog } from "../../services/modLogService.js";
+import { sendModLog } from "../../services/moderation/modLogService.js";
 
 export default {
   permissions: [Permission.SERVER_OWNER],

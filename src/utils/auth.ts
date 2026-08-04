@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction } from "discord.js";
 
-import antiNukeCoOwnerService from "../services/antiNukeCoOwnerService.js";
+import antiNukeCoOwnerService from "../services/antinuke/antiNukeCoOwnerService.js";
 import { isGlobalOwner } from "./globalOwner.js";
 import { isTrustedOwner } from "./ownerTrust.js";
 

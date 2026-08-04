@@ -3,7 +3,7 @@ import {
   Sticker,
 } from "discord.js";
 
-import serverLogService from "../../services/serverLogService.js";
+import serverLogService from "../../services/logging/serverLogService.js";
 
 export default {
   name: Events.GuildStickerUpdate,

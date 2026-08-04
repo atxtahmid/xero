@@ -4,7 +4,7 @@ import {
   type Client,
 } from "discord.js";
 
-import logger from "../../services/logger.js";
+import logger from "../../logger/logger.js";
 import type { Event } from "../../types/Event.js";
 
 const event: Event<Events.ClientReady> = {

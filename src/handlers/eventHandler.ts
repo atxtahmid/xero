@@ -10,8 +10,8 @@ import {
   pathToFileURL,
 } from "node:url";
 
-import logger from "../services/logger.js";
-import notificationService from "../services/notificationService.js";
+import logger from "../logger/logger.js";
+import notificationService from "../services/logging/notificationService.js";
 import type { Event } from "../types/Event.js";
 
 const __filename =

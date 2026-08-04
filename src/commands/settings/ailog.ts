@@ -5,7 +5,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
-import guildSettingsService from "../../services/guildSettingsService.js";
+import guildSettingsService from "../../services/database/guildSettingsService.js";
 import { Permission, type Command } from "../../types/Command.js";
 
 const command: Command = {

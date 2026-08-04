@@ -5,7 +5,7 @@ import {
 } from "discord.js";
 
 import { Permission } from "../types/Command.js";
-import db from "../services/database.js";
+import db from "../database/prisma.js";
 import { isHighlyTrusted } from "./auth.js";
 import { isGlobalOwner } from "./globalOwner.js";
 import { isTrustedOwner } from "./ownerTrust.js";

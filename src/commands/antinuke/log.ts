@@ -8,7 +8,7 @@ import {
 import type { Command } from "../../types/Command.js";
 
 import { Permission } from "../../types/Command.js";
-import db from "../../services/database.js";
+import db from "../../database/prisma.js";
 import { hasPermission } from "../../utils/permissions.js";
 
 const command: Command = {

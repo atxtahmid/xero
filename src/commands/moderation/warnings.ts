@@ -6,7 +6,7 @@ import {
 } from "discord.js";
 
 import { Permission, type Command } from "../../types/Command.js";
-import warningService from "../../services/warningService.js";
+import warningService from "../../services/moderation/warningService.js";
 import { canModerate, fetchMember } from "../../utils/moderation.js";
 
 const command: Command = {

@@ -3,9 +3,9 @@ import {
   Guild,
 } from "discord.js";
 
-import antiNukeHelper from "../../utils/antiNukeHelper.js";
-import { AntiNukeAction } from "../../utils/antiNukeActions.js";
-import serverLogService from "../../services/serverLogService.js";
+import antiNukeHelper from "../../services/antinuke/antiNukeHelper.js";
+import { AntiNukeAction } from "../../constants/antiNukeActions.js";
+import serverLogService from "../../services/logging/serverLogService.js";
 
 export default {
   name: Events.GuildUpdate,
