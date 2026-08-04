@@ -15,6 +15,15 @@ const envSchema = z.object({
 
   OWNER_ID: z.string().trim().min(1),
 
+  LAVALINK_HOST: z.string().trim().min(1),
+  LAVALINK_PORT: z.coerce.number().int().positive(),
+  LAVALINK_PASSWORD: z.string().trim().min(1),
+  LAVALINK_SECURE: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value === "true"),
+
   NODE_ENV: z
     .enum([
       "development",
@@ -49,6 +58,13 @@ const config = Object.freeze({
 
   owner: {
     id: env.OWNER_ID,
+  },
+
+  lavalink: {
+    host: env.LAVALINK_HOST,
+    port: env.LAVALINK_PORT,
+    password: env.LAVALINK_PASSWORD,
+    secure: env.LAVALINK_SECURE,
   },
 
   app: {

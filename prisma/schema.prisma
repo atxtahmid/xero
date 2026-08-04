@@ -49,6 +49,41 @@ model User {
   cases            Case[]        @relation("CaseTarget")
   moderatedCases   Case[]        @relation("CaseModerator")
   createdTickets   Ticket[]      @relation("TicketCreator")
+  playlists        Playlist[]
+}
+
+model Playlist {
+  id          String         @id @default(cuid())
+  ownerId     String
+  owner       User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  name        String
+  tracks      PlaylistTrack[]
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+}
+
+model PlaylistTrack {
+  id          String   @id @default(cuid())
+  playlistId  String
+  playlist    Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  // Lavalink's base64 track "encoded" string — enough to hand straight
+  // back to the node without re-resolving the source on load.
+  encoded     String   @db.Text
+  title       String
+  author      String
+  uri         String?
+  durationMs  Int
+  position    Int
+
+  createdAt   DateTime @default(now())
+
+  @@index([playlistId])
 }
 
 model Guild {
@@ -93,6 +128,12 @@ model GuildSettings {
   autoRoleId         String?
   modRoleId          String?
   adminRoleId        String?
+
+  // Music — DJ role gates skip/stop/volume/loop/shuffle/remove/clear/seek/
+  // filters when set. Null means "anyone in the same voice channel as the
+  // bot may control playback" (see utils/musicChecks.ts).
+  djRoleId           String?
+  musicDefaultVolume Int      @default(100)
 
   // Owner Bypass system — see utils/ownerTrust.ts. Null means "trust
   // whoever Discord says is the real guild.ownerId" (the normal case).

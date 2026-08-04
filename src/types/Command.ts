@@ -2,11 +2,10 @@ import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
   SlashCommandOptionsOnlyBuilder,
+  SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
 
-/**
- * Command permission levels.
- */
+// Command permission levels.
 export enum Permission {
   USER = "USER",
 
@@ -27,21 +26,18 @@ export enum Permission {
   GLOBAL_OWNER = "GLOBAL_OWNER",
 }
 
-/**
- * Base command interface.
- */
+// Base command interface.
 export interface Command {
   readonly data:
     | SlashCommandBuilder
-    | SlashCommandOptionsOnlyBuilder;
+    | SlashCommandOptionsOnlyBuilder
+    | SlashCommandSubcommandsOnlyBuilder;
 
   readonly permissions: readonly Permission[];
 
   readonly guildOnly?: boolean;
 
-  /**
-   * Cooldown in seconds.
-   */
+  // Cooldown in seconds.
   readonly cooldown?: number;
 
   execute(

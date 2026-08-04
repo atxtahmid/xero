@@ -50,6 +50,24 @@ class GuildSettingsService {
     });
   }
 
+  async setDjRole(guildId: string, roleId: string | null) {
+    await this.ensureGuildSetup(guildId);
+
+    return db.guildSettings.update({
+      where: { guildId },
+      data: { djRoleId: roleId },
+    });
+  }
+
+  async setMusicDefaultVolume(guildId: string, volume: number) {
+    await this.ensureGuildSetup(guildId);
+
+    return db.guildSettings.update({
+      where: { guildId },
+      data: { musicDefaultVolume: volume },
+    });
+  }
+
   async setSearchEnabled(guildId: string, enabled: boolean) {
     await this.ensureGuildSetup(guildId);
 
