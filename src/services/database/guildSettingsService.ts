@@ -94,6 +94,42 @@ class GuildSettingsService {
       data: { aiLogChannelId: channelId },
     });
   }
+
+  async setWelcomeChannel(guildId: string, channelId: string | null) {
+    await this.ensureGuildSetup(guildId);
+
+    return db.guildSettings.update({
+      where: { guildId },
+      data: { welcomeChannelId: channelId },
+    });
+  }
+
+  async setWelcomeMessage(guildId: string, message: string | null) {
+    await this.ensureGuildSetup(guildId);
+
+    return db.guildSettings.update({
+      where: { guildId },
+      data: { welcomeMessage: message },
+    });
+  }
+
+  async setLeaveMessage(guildId: string, message: string | null) {
+    await this.ensureGuildSetup(guildId);
+
+    return db.guildSettings.update({
+      where: { guildId },
+      data: { leaveMessage: message },
+    });
+  }
+
+  async setAutoRole(guildId: string, roleId: string | null) {
+    await this.ensureGuildSetup(guildId);
+
+    return db.guildSettings.update({
+      where: { guildId },
+      data: { autoRoleId: roleId },
+    });
+  }
 }
 
 export default new GuildSettingsService();
