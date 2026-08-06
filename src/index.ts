@@ -12,6 +12,7 @@ import { loadEvents } from "./handlers/eventHandler.js";
 import backupScheduler from "./services/backup/backupScheduler.js";
 import lockdownScheduler from "./services/antinuke/lockdownScheduler.js";
 import tempBanScheduler from "./services/moderation/tempBanScheduler.js";
+import giveawayScheduler from "./services/giveaways/giveawayScheduler.js";
 import logger from "./logger/logger.js";
 import notificationService from "./services/logging/notificationService.js";
 import type { Command } from "./types/Command.js";
@@ -59,12 +60,18 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildInvites,
     GatewayIntentBits.GuildEmojisAndStickers,
+    // Not a privileged intent — no Developer Portal toggle needed.
+    // Needed so reaction-based giveaway entries fire messageReactionAdd,
+    // including for giveaway messages sent before the bot's last
+    // restart (hence Partials.Reaction below too).
+    GatewayIntentBits.GuildMessageReactions,
   ],
   partials: [
     Partials.Channel,
     Partials.Message,
     Partials.User,
     Partials.GuildMember,
+    Partials.Reaction,
   ],
 });
 
@@ -79,6 +86,7 @@ client.once(Events.ClientReady, async (readyClient) => {
     await backupScheduler.start(readyClient);
     lockdownScheduler.start(readyClient);
     tempBanScheduler.start(readyClient);
+    giveawayScheduler.start(readyClient);
 
     logger.info(
       "Background services started.",

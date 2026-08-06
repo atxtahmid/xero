@@ -100,6 +100,7 @@ model Guild {
   coOwners           AntiNukeCoOwner[]
   lockdown           AntiNukeLockdown?
   tempBans           TempBan[]
+  giveaways          Giveaway[]
   tickets            Ticket[]
   ticketPanels       TicketPanel[]
 }
@@ -268,6 +269,37 @@ model TempBan {
 
   @@unique([guildId, userId])
   @@index([expiresAt])
+}
+
+model Giveaway {
+  id                String   @id @default(cuid())
+  guildId           String
+  channelId         String
+  messageId         String   @unique
+  hostId            String
+  prize             String
+  winnerCount       Int      @default(1)
+  endsAt            DateTime
+  ended             Boolean  @default(false)
+
+  // All optional and independent — a giveaway can use any combination
+  // of these, or none. Enforced both at entry time (disqualifying
+  // reactions get removed immediately with a DM explaining why) and
+  // again at draw time (defense in depth in case someone qualified when
+  // they reacted but no longer does by the time the giveaway ends, e.g.
+  // a required role was removed from them).
+  requiredRoleId    String?
+  minAccountAgeDays Int?
+  minServerJoinDays Int?
+
+  winnerIds         String[] @default([])
+
+  createdAt         DateTime @default(now())
+
+  guild             Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId])
+  @@index([endsAt])
 }
 
 model AntiNukeLockdown {
