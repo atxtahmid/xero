@@ -40,10 +40,7 @@ const command: Command = {
       return;
     }
 
-    // Explicit true is required in this version of lavalink-client —
-    // calling pause() with no argument is unreliable.
-    await player.pause(true);
-
+    await player.pause();
     await interaction.reply({ content: "⏸️ Paused." });
   },
 };

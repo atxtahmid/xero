@@ -40,10 +40,7 @@ const command: Command = {
       return;
     }
 
-    // player.resume() is unreliable in this version of lavalink-client —
-    // using player.pause(false) which is the correct way to unpause.
-    await player.pause(false);
-
+    await player.resume();
     await interaction.reply({ content: "▶️ Resumed." });
   },
 };
