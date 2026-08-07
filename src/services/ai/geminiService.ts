@@ -12,10 +12,11 @@ const ai = new GoogleGenAI({
 });
 
 class GeminiService {
-  private readonly modelName = "gemini-1.5-flash";
+  // gemini-2.0-flash: faster, lower cost, supports long context.
+  // gemini-1.5-flash was deprecated mid-2026.
+  private readonly modelName = "gemini-2.0-flash";
 
   private readonly generationConfig = {
-    systemInstruction: "",
     temperature: 0.7,
     maxOutputTokens: 2048,
   };
@@ -32,15 +33,35 @@ class GeminiService {
           },
         });
 
-        const text = result.text?.trim() ?? "";
+        // result.text is a convenience getter in @google/genai SDK but can
+        // throw or return undefined if the response was blocked or had no
+        // parts. Extracting manually is safer.
+        const text =
+          result.candidates?.[0]?.content?.parts
+            ?.map((p) => p.text ?? "")
+            .join("")
+            .trim() ?? "";
 
         if (!text) {
-          throw new Error("Empty response from Gemini API.");
+          // Could be a safety block with no candidates — surface it properly.
+          const blockReason =
+            result.candidates?.[0]?.finishReason ??
+            result.promptFeedback?.blockReason ??
+            "unknown";
+
+          logger.warn(`[Gemini Service] Empty response. Reason: ${blockReason}`);
+
+          if (
+            String(blockReason).toLowerCase().includes("safety") ||
+            String(blockReason).toLowerCase().includes("block")
+          ) {
+            return "⚠️ I couldn't generate a response because the request was blocked by AI safety filters.";
+          }
+
+          throw new Error(`Empty response from Gemini API. Reason: ${blockReason}`);
         }
 
-        return text.length > 2000
-          ? `${text.slice(0, 1997)}...`
-          : text;
+        return text.length > 2000 ? `${text.slice(0, 1997)}...` : text;
       } catch (error: unknown) {
         if (error instanceof Error) {
           logger.error("[Gemini Service] API Error", {
@@ -50,11 +71,12 @@ class GeminiService {
 
           const message = error.message.toLowerCase();
 
-          if (
-            message.includes("429") ||
-            message.includes("quota")
-          ) {
+          if (message.includes("429") || message.includes("quota")) {
             return "⚠️ The AI is currently overloaded. Please try again in a minute.";
+          }
+
+          if (message.includes("safety") || message.includes("block")) {
+            return "⚠️ I couldn't generate a response because the request was blocked by AI safety filters.";
           }
 
           if (
@@ -65,10 +87,6 @@ class GeminiService {
           ) {
             continue;
           }
-
-          if (message.includes("safety")) {
-            return "⚠️ I couldn't generate a response because the request was blocked by AI safety filters.";
-          }
         } else {
           logger.error("[Gemini Service] Unknown API Error", error);
         }
@@ -77,7 +95,7 @@ class GeminiService {
       }
     }
 
-    throw new Error("Gemini request failed.");
+    throw new Error("Gemini request failed after retries.");
   }
 }
 

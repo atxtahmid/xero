@@ -7,9 +7,9 @@ import {
 import { Permission, type Command } from "../../types/Command.js";
 import { hasPermission } from "../../utils/permissions.js";
 
-// Category order shown in the embed.
 const CATEGORY_ORDER = [
   "General",
+  "AI",
   "Ticket",
   "Music",
   "Giveaway",
@@ -21,6 +21,7 @@ const CATEGORY_ORDER = [
 
 const CATEGORY_EMOJI: Record<string, string> = {
   General: "🌐",
+  AI: "🤖",
   Ticket: "🎫",
   Music: "🎵",
   Giveaway: "🎉",
@@ -31,14 +32,17 @@ const CATEGORY_EMOJI: Record<string, string> = {
 };
 
 // Hardcoded map: command name -> category.
-// Permission levels alone can't distinguish Music/Ticket/Giveaway from
+// Permission levels alone can't distinguish Music/Ticket/Giveaway/AI from
 // General/Moderation since they share the same Permission tiers.
 const COMMAND_CATEGORY: Record<string, string> = {
   // General
   about: "General",
-  chat: "General",
   help: "General",
   ping: "General",
+
+  // AI
+  chat: "AI",
+  clear: "AI",
 
   // Ticket
   add: "Ticket",

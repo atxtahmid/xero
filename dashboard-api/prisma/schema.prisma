@@ -1,3 +1,13 @@
+// IMPORTANT: this is a COPY of bot/prisma/schema.prisma. This service
+// runs as a separate deployable from the bot (its own package.json, own
+// node_modules, own generated Prisma Client) but reads/writes the SAME
+// Postgres database via the same DATABASE_URL. Prisma requires each
+// service to generate its own client from its own schema file — there's
+// no way to share one schema.prisma across two independent npm projects
+// without a monorepo/workspace setup, which the bot doesn't currently
+// use. Whenever bot/prisma/schema.prisma changes, copy those changes
+// here too, or this service's Prisma Client will drift out of sync with
+// the real table shape and either miss new columns or error on writes.
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,6 +22,24 @@ enum PunishmentType {
   TIMEOUT
   KICK
   BAN
+}
+
+// Stores Discord OAuth access/refresh tokens server-side, never sent to
+// the browser — the JWT issued to the frontend only ever contains a
+// reference to a row here, not the real Discord token itself. This
+// table is ALSO declared in the bot's own schema.prisma (bot never
+// reads/writes it, but its `prisma db push` would otherwise try to drop
+// it — see the comment there). Keep both copies identical.
+model DashboardSession {
+  id           String   @id @default(cuid())
+  userId       String
+  accessToken  String   @db.Text
+  refreshToken String   @db.Text
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
 }
 
 enum ModerationAction {
@@ -269,26 +297,6 @@ model TempBan {
 
   @@unique([guildId, userId])
   @@index([expiresAt])
-}
-
-// Used ONLY by the separate dashboard-api service (see dashboard-api/
-// at the project root) — the bot itself never reads or writes this
-// table. It's declared here too, not just in dashboard-api's own copy
-// of this schema, because the bot's `npm start` runs `prisma db push`
-// against this exact file: if this model were missing from the bot's
-// copy, the bot's own db push would try to DROP this table the next
-// time it deployed, since from its schema's perspective the table
-// shouldn't exist. Keep both copies of this model identical.
-model DashboardSession {
-  id           String   @id @default(cuid())
-  userId       String
-  accessToken  String   @db.Text
-  refreshToken String   @db.Text
-  expiresAt    DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([userId])
 }
 
 model Giveaway {
