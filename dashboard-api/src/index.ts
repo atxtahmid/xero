@@ -11,6 +11,9 @@ import authRoutes from "./routes/auth.js";
 import guildsRoutes from "./routes/guilds.js";
 import moderationRoutes from "./routes/moderation.js";
 import settingsRoutes from "./routes/settings.js";
+import ticketsRoutes from "./routes/tickets.js";
+import giveawaysRoutes from "./routes/giveaways.js";
+import analyticsRoutes from "./routes/analytics.js";
 import { initSocket } from "./socket/socketService.js";
 
 const app = express();
@@ -36,6 +39,9 @@ app.use("/auth", authRoutes);
 app.use("/api/guilds", guildsRoutes);
 app.use("/api/guilds", settingsRoutes);
 app.use("/api/guilds", moderationRoutes);
+app.use("/api/guilds", ticketsRoutes);
+app.use("/api/guilds", giveawaysRoutes);
+app.use("/api/guilds", analyticsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
